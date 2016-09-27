@@ -48,6 +48,23 @@ displayInotifyEvent(struct inotify_event *i)
 
 #define BUF_LEN (10 * (sizeof(struct inotify_event) + NAME_MAX + 1))
 
+static int add_watch(int inotifyFd, const char *dir, const char *name)
+{
+	char path[256];
+	static char last_path[256];
+	snprintf(path, sizeof(path) - 1, "%s/%s", dir ? dir : last_path, name);
+	int wd = inotify_add_watch(inotifyFd, path, IN_ALL_EVENTS | IN_VOLATILE);
+	if (wd == -1) {
+		if (errno == ENOENT)
+			return add_watch(inotifyFd, NULL, dir);
+		return wd;
+	}
+
+	printf("Watching %s using wd %d\n", path, wd);
+	strncpy(last_path, path, sizeof(last_path) - 1);
+	return wd;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -65,11 +82,9 @@ main(int argc, char *argv[])
         errExit("inotify_init");
 
     for (j = 1; j < argc; j++) {
-        wd = inotify_add_watch(inotifyFd, argv[j], IN_ALL_EVENTS | IN_VOLATILE);
-        if (wd == -1)
-            errExit("inotify_add_watch");
-
-        printf("Watching %s using wd %d\n", argv[j], wd);
+	wd = add_watch(inotifyFd, argv[j], "");
+	if (wd == -1)
+		errExit("inotify_add_watch");
     }
 
     for (;;) {                                  /* Read events forever */
