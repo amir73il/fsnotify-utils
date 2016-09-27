@@ -12,6 +12,9 @@
 #include <limits.h>
 #include "tlpi_hdr.h"
 
+#define FS_VOLATILE            0x01000000
+#define IN_VOLATILE            0x08000000
+
 static void             /* Display information from inotify_event structure */
 displayInotifyEvent(struct inotify_event *i)
 {
@@ -36,6 +39,7 @@ displayInotifyEvent(struct inotify_event *i)
     if (i->mask & IN_OPEN)          printf("IN_OPEN ");
     if (i->mask & IN_Q_OVERFLOW)    printf("IN_Q_OVERFLOW ");
     if (i->mask & IN_UNMOUNT)       printf("IN_UNMOUNT ");
+    if (i->mask & FS_VOLATILE)      printf("FS_VOLATILE ");
     printf("\n");
 
     if (i->len > 0)
@@ -61,7 +65,7 @@ main(int argc, char *argv[])
         errExit("inotify_init");
 
     for (j = 1; j < argc; j++) {
-        wd = inotify_add_watch(inotifyFd, argv[j], IN_ALL_EVENTS);
+        wd = inotify_add_watch(inotifyFd, argv[j], IN_ALL_EVENTS | IN_VOLATILE);
         if (wd == -1)
             errExit("inotify_add_watch");
 
