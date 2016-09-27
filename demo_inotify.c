@@ -14,6 +14,7 @@
 
 #define FS_VOLATILE            0x01000000
 #define IN_VOLATILE            0x08000000
+#define FS_D_INSTANTIATE	(IN_CREATE|IN_ISDIR|FS_VOLATILE)
 
 static void             /* Display information from inotify_event structure */
 displayInotifyEvent(struct inotify_event *i)
@@ -46,6 +47,11 @@ displayInotifyEvent(struct inotify_event *i)
         printf("        name = %s\n", i->name);
 }
 
+static inline int is_new_dentry(struct inotify_event *i)
+{
+	return (i->mask & FS_D_INSTANTIATE) == FS_D_INSTANTIATE && i->len > 0;
+}
+
 #define BUF_LEN (10 * (sizeof(struct inotify_event) + NAME_MAX + 1))
 
 static int add_watch(int inotifyFd, const char *dir, const char *name)
@@ -55,8 +61,10 @@ static int add_watch(int inotifyFd, const char *dir, const char *name)
 	snprintf(path, sizeof(path) - 1, "%s/%s", dir ? dir : last_path, name);
 	int wd = inotify_add_watch(inotifyFd, path, IN_ALL_EVENTS | IN_VOLATILE);
 	if (wd == -1) {
-		if (errno == ENOENT)
+		int err = errno;
+		if (dir && err == ENOENT)
 			return add_watch(inotifyFd, NULL, dir);
+		printf("Failed adding watch on %s: %s\n", path, strerror(err));
 		return wd;
 	}
 
@@ -102,6 +110,9 @@ main(int argc, char *argv[])
         for (p = buf; p < buf + numRead; ) {
             event = (struct inotify_event *) p;
             displayInotifyEvent(event);
+
+	    if (is_new_dentry(event))
+		    add_watch(inotifyFd, NULL, event->name);
 
             p += sizeof(struct inotify_event) + event->len;
         }
