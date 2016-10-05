@@ -20,9 +20,9 @@
 #include <sys/inotify.h>
 #include "tlpi_hdr.h"
 
-#define FS_VOLATILE            0x01000000
-#define IN_VOLATILE            0x08000000
-#define FS_D_INSTANTIATE	(IN_CREATE|IN_ISDIR|FS_VOLATILE)
+#define FAN_RECURSIVE            0x01000000
+#define FAN_EVENT_ON_DESCENDANT (FAN_EVENT_ON_CHILD |FAN_RECURSIVE)
+
 
 /*
  * Display information from fanotify_event_metadata structure:
@@ -61,7 +61,6 @@ displayNotifyEvent(struct fanotify_event_metadata *i)
     if (i->mask & IN_OPEN)          printf("IN_OPEN ");
     if (i->mask & IN_Q_OVERFLOW)    printf("IN_Q_OVERFLOW ");
     if (i->mask & IN_UNMOUNT)       printf("IN_UNMOUNT ");
-    if (i->mask & FS_VOLATILE)      printf("FS_VOLATILE ");
     printf("\n");
 
     if (i->fd > 0) {
@@ -89,8 +88,8 @@ static int add_watch(int notifyFd, const char *dir, const char *name)
 	 * - notification events after closing a write-enabled
 	 * file descriptor
 	 */
-	int wd = fanotify_mark(notifyFd, FAN_MARK_ADD | FAN_MARK_MOUNT,
-				FAN_ALL_EVENTS|FAN_EVENT_ON_CHILD|FAN_ONDIR, AT_FDCWD,
+	int wd = fanotify_mark(notifyFd, FAN_MARK_ADD,
+				FAN_ALL_EVENTS|FAN_EVENT_ON_DESCENDANT|FAN_ONDIR, AT_FDCWD,
 				path);
 	if (wd == -1) {
 		int err = errno;
