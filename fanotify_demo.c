@@ -25,7 +25,7 @@
 
 #define FAN_DENTRY_EVENTS (IN_ATTRIB |\
 		IN_MOVED_FROM | IN_MOVED_TO | IN_MOVE_SELF |\
-		IN_CREATE | IN_DELETE)
+		IN_CREATE)
 
 /*
  * Display information from fanotify_event_metadata structure:
@@ -92,8 +92,9 @@ static int add_watch(int notifyFd, const char *dir, const char *name)
 	 * file descriptor
 	 */
 	int wd = fanotify_mark(notifyFd, FAN_MARK_ADD,
-				IN_ALL_EVENTS|FAN_DENTRY_EVENTS|FAN_EVENT_ON_DESCENDANT|FAN_ONDIR, AT_FDCWD,
-				path);
+				FAN_ALL_EVENTS|FAN_DENTRY_EVENTS|
+				FAN_EVENT_ON_DESCENDANT|FAN_ONDIR,
+				AT_FDCWD, path);
 	if (wd == -1) {
 		int err = errno;
 		if (dir && err == ENOENT)
