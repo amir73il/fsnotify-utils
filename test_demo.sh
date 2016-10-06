@@ -16,12 +16,12 @@ sleep 1
 rm a/1
 rmdir a/dir1
 sleep 1
-touch /tmp/b/c/d/e/f/0
-chmod +x /tmp/b/c/d/e/f/0
+touch /tmp/b/c/d/e/f/g/0
+chmod +x /tmp/b/c/d/e/f/g/0
 sleep 1
-mv /tmp/b/c/d/e/f/0 /tmp/b/c/d/e/f/1
+mv /tmp/b/c/d/e/f/g/0 /tmp/b/c/d/e/f/g/1
+rm /tmp/b/c/d/e/f/g/1
+sleep 1
 mv /tmp/b/c/d/e/f/g /tmp/b/c/d/e/f/G
-sleep 1
-rm /tmp/b/c/d/e/f/1
 rmdir /tmp/b/c/d/e/f/G
-
+fg

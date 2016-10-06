@@ -130,6 +130,9 @@ main(int argc, char *argv[])
 		errExit("notify_add_watch");
     }
 
+    printf("Hit any key to start printing events...\n");
+    getchar();
+
     for (;;) {                                  /* Read events forever */
         numRead = read(notifyFd, buf, BUF_LEN);
         if (numRead == 0)
