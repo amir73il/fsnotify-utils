@@ -1,8 +1,8 @@
 #!/bin/sh -x
 echo "file fs/notify/fanotify/*  +p" > /sys/kernel/debug/dynamic_debug/control
+mount -o bind /tmp a/
 mkdir -p a/b/c/d/e/f/g/
 mkdir -p /tmp/b
-mount -o bind a/b /tmp/b
 echo 3 > /proc/sys/vm/drop_caches
 ./fanotify_demo a/ &
 sleep 1
