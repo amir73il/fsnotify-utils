@@ -25,7 +25,7 @@
 
 #define FAN_DENTRY_EVENTS (IN_ATTRIB |\
 		IN_MOVED_FROM | IN_MOVED_TO | IN_MOVE_SELF |\
-		IN_CREATE)
+		IN_CREATE | IN_DELETE)
 
 /*
  * Display information from fanotify_event_metadata structure:
