@@ -20,9 +20,12 @@
 #include <sys/inotify.h>
 #include "tlpi_hdr.h"
 
-#define FAN_RECURSIVE            0x01000000
-#define FAN_EVENT_ON_DESCENDANT (FAN_EVENT_ON_CHILD |FAN_RECURSIVE)
+#define FAN_EVENT_ON_SB         0x01000000
+#define FAN_EVENT_ON_DESCENDANT (FAN_EVENT_ON_CHILD | FAN_EVENT_ON_SB)
 
+#define FAN_DENTRY_EVENTS (IN_ATTRIB |\
+		IN_MOVED_FROM | IN_MOVED_TO | IN_MOVE_SELF |\
+		IN_CREATE | IN_DELETE)
 
 /*
  * Display information from fanotify_event_metadata structure:
@@ -89,7 +92,7 @@ static int add_watch(int notifyFd, const char *dir, const char *name)
 	 * file descriptor
 	 */
 	int wd = fanotify_mark(notifyFd, FAN_MARK_ADD,
-				FAN_ALL_EVENTS|FAN_EVENT_ON_DESCENDANT|FAN_ONDIR, AT_FDCWD,
+				IN_ALL_EVENTS|FAN_DENTRY_EVENTS|FAN_EVENT_ON_DESCENDANT|FAN_ONDIR, AT_FDCWD,
 				path);
 	if (wd == -1) {
 		int err = errno;
