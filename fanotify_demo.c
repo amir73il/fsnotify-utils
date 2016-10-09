@@ -43,6 +43,7 @@ static void
 displayNotifyEvent(struct fanotify_event_metadata *i)
 {
     char procfile[256];
+    char path[256];
     char filename[256];
     ssize_t len = 0;
 
@@ -69,14 +70,17 @@ displayNotifyEvent(struct fanotify_event_metadata *i)
     if (i->fd > 0) {
 	len = snprintf(procfile, 255, "/proc/self/fd/%d", i->fd);
 	if (len > 0)
-		len = readlink(procfile, filename, 255);
+		len = readlink(procfile, path, 255);
 	if (len > 0)
-		filename[len] = 0;
+		path[len] = 0;
 	close(i->fd);
     }
 
     if (len > 0)
-        printf("        filename = %s\n", filename);
+        printf("        path = %s\n", path);
+
+    if (i->event_len > FAN_EVENT_METADATA_LEN)
+	printf("        name = %s\n", (const char *)(i+1));
 }
 
 #define BUF_LEN (10 * (sizeof(struct fanotify_event_metadata) + NAME_MAX + 1))
