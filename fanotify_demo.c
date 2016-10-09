@@ -115,6 +115,7 @@ main(int argc, char *argv[])
     char buf[BUF_LEN] __attribute__ ((aligned(8)));
     ssize_t numRead, len;
     struct fanotify_event_metadata *event;
+    int countdown = 5;
 
     if (argc < 2 || strcmp(argv[1], "--help") == 0)
         usageErr("%s pathname...\n", argv[0]);
@@ -130,8 +131,11 @@ main(int argc, char *argv[])
 		errExit("notify_add_watch");
     }
 
-    printf("Hit any key to start printing events...\n");
-    getchar();
+    printf("Waiting for events...\n");
+    while (--countdown > 0) {
+	printf("%d...\n",countdown);
+	sleep(1);
+    }
 
     for (;;) {                                  /* Read events forever */
         numRead = read(notifyFd, buf, BUF_LEN);
