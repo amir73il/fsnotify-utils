@@ -23,6 +23,9 @@
 #define FAN_EVENT_ON_SB         0x01000000
 #define FAN_EVENT_ON_DESCENDANT (FAN_EVENT_ON_CHILD | FAN_EVENT_ON_SB)
 
+#define FAN_EVENT_INFO_PARENT   0x100
+#define FAN_EVENT_INFO_NAME     0x200
+
 #define FAN_DENTRY_EVENTS (IN_ATTRIB |\
 		IN_MOVED_TO | IN_MOVE_SELF |\
 		IN_CREATE | IN_DELETE)
@@ -125,7 +128,9 @@ main(int argc, char *argv[])
     if (argc < 2 || strcmp(argv[1], "--help") == 0)
         usageErr("%s pathname...\n", argv[0]);
 
-    notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF, O_RDONLY | O_LARGEFILE);
+    notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF |
+				FAN_EVENT_INFO_PARENT | FAN_EVENT_INFO_NAME,
+				O_RDONLY);
     if (notifyFd == -1) {
 	    errExit("fanotify_init");
     }
