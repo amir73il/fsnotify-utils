@@ -120,6 +120,7 @@ main(int argc, char *argv[])
     ssize_t numRead, len;
     struct fanotify_event_metadata *event;
     int countdown = 5;
+    int maxevents = 100;
 
     if (argc < 2 || strcmp(argv[1], "--help") == 0)
         usageErr("%s pathname...\n", argv[0]);
@@ -157,7 +158,8 @@ main(int argc, char *argv[])
 	len = numRead;
         while (FAN_EVENT_OK(event, len)) {
             displayNotifyEvent(event);
-
+	    if (maxevents-- <= 0)
+		    exit(EXIT_SUCCESS);
 	    event = FAN_EVENT_NEXT(event, len);
         }
     }
