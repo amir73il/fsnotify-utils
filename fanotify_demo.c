@@ -25,6 +25,7 @@
 
 #define FAN_EVENT_INFO_PARENT   0x100
 #define FAN_EVENT_INFO_NAME     0x200
+#define FAN_EVENT_INFO_FH       0x400
 
 #define FAN_DENTRY_EVENTS (IN_ATTRIB |\
 		IN_MOVED_TO | IN_MOVE_SELF |\
@@ -100,7 +101,7 @@ static int add_watch(int notifyFd, const char *dir, const char *name)
 	 */
 	int wd = fanotify_mark(notifyFd, FAN_MARK_ADD,
 				FAN_ALL_EVENTS|FAN_DENTRY_EVENTS|
-				FAN_EVENT_ON_CHILD|FAN_ONDIR,
+				FAN_EVENT_ON_DESCENDANT|FAN_ONDIR,
 				AT_FDCWD, path);
 	if (wd == -1) {
 		int err = errno;
@@ -129,7 +130,7 @@ main(int argc, char *argv[])
         usageErr("%s pathname...\n", argv[0]);
 
     notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF |
-				FAN_EVENT_INFO_PARENT | FAN_EVENT_INFO_NAME,
+				FAN_EVENT_INFO_PARENT | FAN_EVENT_INFO_NAME| FAN_EVENT_INFO_FH,
 				O_RDONLY);
     if (notifyFd == -1) {
 	    errExit("fanotify_init");
