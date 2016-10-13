@@ -50,6 +50,7 @@ displayNotifyEvent(struct fanotify_event_metadata *i)
     char path[256];
     char filename[256];
     ssize_t len = 0;
+    struct file_handle *fh;
 
     printf("    fd =%d; ", i->fd);
     printf("mask = ");
@@ -83,8 +84,22 @@ displayNotifyEvent(struct fanotify_event_metadata *i)
     if (len > 0)
         printf("        path = %s\n", path);
 
-    if (i->event_len > FAN_EVENT_METADATA_LEN)
-	printf("        name = %s\n", (const char *)(i+1));
+    if (i->event_len <= FAN_EVENT_METADATA_LEN)
+	    return;
+
+    fh = (struct file_handle *)(i+1);
+    printf("    type =0x%x; ", fh->handle_type);
+    printf("    bytes =0x%x; ", fh->handle_bytes);
+    if (fh->handle_type == 1) {
+	    unsigned *fid = (unsigned *)fh->f_handle;
+	    printf("    ino =%u; ", fid[0]);
+	    printf("    gen =%u; ", fid[1]);
+    }
+
+    if (i->event_len <= FAN_EVENT_METADATA_LEN + sizeof(*fh) + fh->handle_bytes)
+	    return;
+
+    printf("        name = %s\n", fh->f_handle + fh->handle_bytes);
 }
 
 #define BUF_LEN (10 * (sizeof(struct fanotify_event_metadata) + NAME_MAX + 1))
