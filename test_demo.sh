@@ -3,11 +3,15 @@
 #SLEEP='sleep 1'
 
 echo "file fs/notify/fanotify/*  +p" > /sys/kernel/debug/dynamic_debug/control
-mount -o bind /tmp a/
+mount -o bind a/ /tmp/
 mkdir -p a/b/c/d/e/f/g/
 mkdir -p /tmp/b
 echo 3 > /proc/sys/vm/drop_caches
-./fanotify_demo a/ &
+./fanotify_demo . &
+
+echo Hit any key to start events...
+read a
+
 $SLEEP
 touch a/0
 chmod +x a/0
