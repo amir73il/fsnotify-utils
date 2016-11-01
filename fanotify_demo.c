@@ -20,6 +20,16 @@
 #include <sys/inotify.h>
 #include "tlpi_hdr.h"
 
+#ifndef XFS_FILEID_TYPE_64FLAG
+#define XFS_FILEID_TYPE_64FLAG  0x80
+
+#define FILEID_INO32_GEN        0x1
+#define FILEID_INO32_GEN_PARENT 0x2
+
+#define FILEID_INO64_GEN        (FILEID_INO32_GEN|XFS_FILEID_TYPE_64FLAG)
+#define FILEID_INO64_GEN_PARENT (FILEID_INO32_GEN_PARENT|XFS_FILEID_TYPE_64FLAG)
+#endif
+
 #define FAN_EVENT_ON_SB         0x01000000
 #define FAN_EVENT_ON_DESCENDANT (FAN_EVENT_ON_CHILD | FAN_EVENT_ON_SB)
 
@@ -50,7 +60,9 @@ displayNotifyEvent(struct fanotify_event_metadata *i)
     char path[256];
     char filename[256];
     ssize_t len = 0;
-    struct file_handle *fh;
+    struct file_handle *fh = (struct file_handle *)(i+1);
+    unsigned *fid = (unsigned *)fh->f_handle;
+    unsigned long long *fid64 = (unsigned long long *)fh->f_handle;
 
     printf("    fd =%d; ", i->fd);
     printf("mask = ");
@@ -87,13 +99,19 @@ displayNotifyEvent(struct fanotify_event_metadata *i)
     if (i->event_len <= FAN_EVENT_METADATA_LEN)
 	    return;
 
-    fh = (struct file_handle *)(i+1);
     printf("    type =0x%x; ", fh->handle_type);
     printf("    bytes =0x%x; ", fh->handle_bytes);
-    if (fh->handle_type == 1) {
-	    unsigned *fid = (unsigned *)fh->f_handle;
-	    printf("    ino =%u; ", fid[0]);
-	    printf("    gen =%u; ", fid[1]);
+    switch (fh->handle_type) {
+	    case FILEID_INO32_GEN_PARENT:
+	    case FILEID_INO32_GEN:
+		    printf("    ino =%u; ", fid[0]);
+		    printf("    gen =%u; ", fid[1]);
+		    break;
+	    case FILEID_INO64_GEN_PARENT:
+	    case FILEID_INO64_GEN:
+		    printf("    ino =%llu; ", fid64[0]);
+		    printf("    gen =%u; ", fid[2]);
+		    break;
     }
 
     if (i->event_len <= FAN_EVENT_METADATA_LEN + sizeof(*fh) + fh->handle_bytes)
