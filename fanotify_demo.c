@@ -62,7 +62,6 @@ displayNotifyEvent(struct fanotify_event_metadata *i)
     ssize_t len = 0;
     struct file_handle *fh = (struct file_handle *)(i+1);
     unsigned *fid = (unsigned *)fh->f_handle;
-    unsigned long long *fid64 = (unsigned long long *)fh->f_handle;
 
     printf("    fd =%d; ", i->fd);
     printf("mask = ");
@@ -103,13 +102,17 @@ displayNotifyEvent(struct fanotify_event_metadata *i)
     printf("    bytes =0x%x; ", fh->handle_bytes);
     switch (fh->handle_type) {
 	    case FILEID_INO32_GEN_PARENT:
+		    printf("    parent ino =%u; ", fid[2]);
+		    printf("    parent gen =%u; ", fid[3]);
 	    case FILEID_INO32_GEN:
 		    printf("    ino =%u; ", fid[0]);
 		    printf("    gen =%u; ", fid[1]);
 		    break;
 	    case FILEID_INO64_GEN_PARENT:
+		    printf("    parent ino =%llu; ", *(unsigned long long *)(fid+3));
+		    printf("    parent gen =%u; ", fid[5]);
 	    case FILEID_INO64_GEN:
-		    printf("    ino =%llu; ", fid64[0]);
+		    printf("    ino =%llu; ", *(unsigned long long *)fid);
 		    printf("    gen =%u; ", fid[2]);
 		    break;
     }
