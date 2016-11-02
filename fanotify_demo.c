@@ -117,10 +117,10 @@ displayNotifyEvent(struct fanotify_event_metadata *i)
 		    break;
     }
 
-    if (i->event_len <= FAN_EVENT_METADATA_LEN + sizeof(*fh) + fh->handle_bytes)
-	    return;
-
-    printf("        name = %s\n", fh->f_handle + fh->handle_bytes);
+    if (i->event_len > FAN_EVENT_METADATA_LEN + sizeof(*fh) + fh->handle_bytes)
+	    printf("        name = %s\n", fh->f_handle + fh->handle_bytes);
+    else
+	    printf("\n");
 }
 
 #define BUF_LEN (10 * (sizeof(struct fanotify_event_metadata) + NAME_MAX + 1))
