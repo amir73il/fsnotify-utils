@@ -1,6 +1,6 @@
 COMMON=error_functions.c
 
-all: fanotify_demo inotify_demo fanotify_bug mkdirs rmdirs
+all: fanotify_demo inotify_demo fanotify_bug mkdirs rmdirs ioloop
 
 fanotify_demo: fanotify_demo.c $(COMMON)
 	gcc -g -o $@ fanotify_demo.c $(COMMON)
@@ -15,3 +15,5 @@ mkdirs: mkdirs.c
 
 rmdirs: mkdirs
 	ln -s mkdirs rmdirs
+
+ioloop: ioloop.c
