@@ -10,8 +10,8 @@ fi
 
 echo "file fs/notify/fanotify/*  +p" > /sys/kernel/debug/dynamic_debug/control
 mkdir -p a/b/c/d/e/f/g/
-mkdir -p /tmp/b
-mount -o bind a/b /tmp/b
+mkdir -p /tmp/g
+mount -o bind a/b/c/d/e/f/g /tmp/g
 #echo 3 > /proc/sys/vm/drop_caches
 ./fanotify_demo $WD &
 
@@ -29,11 +29,11 @@ $SLEEP
 rm a/1
 rmdir a/dir1
 sleep 1
-touch /tmp/b/c/d/e/f/g/0
-chmod +x /tmp/b/c/d/e/f/g/0
+touch a/b/c/d/e/f/g/0
+chmod +x a/b/c/d/e/f/g/0
 $SLEEP
-mv /tmp/b/c/d/e/f/g/0 /tmp/b/c/d/e/f/g/1
-rm /tmp/b/c/d/e/f/g/1
+mv a/b/c/d/e/f/g/0 a/b/c/d/e/f/g/1
+rm a/b/c/d/e/f/g/1
 $SLEEP
-mv /tmp/b/c/d/e/f/g /tmp/b/c/d/e/f/G
-rmdir /tmp/b/c/d/e/f/G
+mv a/b/c/d/e/f/g a/b/c/d/e/f/G
+rmdir a/b/c/d/e/f/G
