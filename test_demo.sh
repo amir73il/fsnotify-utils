@@ -19,7 +19,7 @@ echo Hit any key to start events...
 read a
 
 $SLEEP
-touch a/0
+mknod a/0 c 0 0
 chmod +x a/0
 mkdir a/dir0
 $SLEEP
