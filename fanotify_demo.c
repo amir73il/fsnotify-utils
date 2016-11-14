@@ -129,16 +129,24 @@ static int add_watch(int notifyFd, const char *dir, const char *name)
 {
 	char path[256];
 	static char last_path[256];
+	int wd;
+
 	snprintf(path, sizeof(path) - 1, "%s/%s", dir ? dir : last_path, name);
 
 	/* Mark the mount for:
 	 * - notification events after closing a write-enabled
 	 * file descriptor
 	 */
-	int wd = fanotify_mark(notifyFd, FAN_MARK_ADD,
+	wd = fanotify_mark(notifyFd, FAN_MARK_ADD,
 				FAN_ALL_EVENTS|FAN_DENTRY_EVENTS|
 				FAN_EVENT_ON_DESCENDANT|FAN_ONDIR,
 				AT_FDCWD, path);
+	if (wd == -1) {
+		fprintf(stderr, "fanotify sb watch not supported\n");
+		wd = fanotify_mark(notifyFd, FAN_MARK_ADD,
+				FAN_ALL_EVENTS|FAN_EVENT_ON_CHILD|FAN_ONDIR,
+				AT_FDCWD, path);
+	}
 	if (wd == -1) {
 		int err = errno;
 		if (dir && err == ENOENT)
@@ -168,6 +176,10 @@ main(int argc, char *argv[])
     notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF |
 				FAN_EVENT_INFO_PARENT | FAN_EVENT_INFO_NAME| FAN_EVENT_INFO_FH,
 				O_RDONLY);
+    if (notifyFd == -1) {
+	fprintf(stderr, "fanotify filename events not supported\n");
+	notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF, O_RDONLY);
+    }
     if (notifyFd == -1) {
 	    errExit("fanotify_init");
     }
