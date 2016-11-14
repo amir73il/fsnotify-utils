@@ -25,25 +25,20 @@ int main(void)
 	if (ret == -1)
 		err(1, "mknod()");
 
-	fanotify_fd = fanotify_init(FAN_CLASS_PRE_CONTENT, O_RDONLY);
-	if (fanotify_fd == -1)
-		err(1, "fanotify_init()");
-
-	ret = fanotify_mark(fanotify_fd, FAN_MARK_ADD, FAN_OPEN_PERM, AT_FDCWD, testfile);
-	if (ret == -1)
-		err(1, "fanotify_mark()");
-
 	pid1 = fork();
 	if (pid1 == -1)
 		err(1, "fork()");
 
 	if (pid1 == 0) {
-		close(fanotify_fd);
-		ret = open(testfile, O_RDONLY);
+		fanotify_fd = fanotify_init(FAN_CLASS_PRE_CONTENT, O_RDONLY);
+		if (fanotify_fd == -1)
+			err(1, "fanotify_init()");
+
+		ret = fanotify_mark(fanotify_fd, FAN_MARK_ADD, FAN_OPEN_PERM, AT_FDCWD, testfile);
 		if (ret == -1)
-			err(1, "open()");
-		fprintf(stderr, "something went wrong: open succeeded\n");
-		exit(1);
+			err(1, "fanotify_mark()");
+
+		pause();
 	}
 	sleep(1);
 
@@ -52,17 +47,22 @@ int main(void)
 		err(1, "fork()");
 
 	if (pid2 == 0) {
-		close(fanotify_fd);
-		inotify_fd = inotify_init();
-		if (inotify_fd == -1)
-			err(1, "inotify_init()");
-		ret = inotify_add_watch(inotify_fd, testfile, IN_ALL_EVENTS);
+		ret = open(testfile, O_RDONLY);
 		if (ret == -1)
-			err(1, "inotify_add_watch()");
-		close(inotify_fd);
-		fprintf(stderr, "close(inotify_fd): success\n");
-		exit(0);
+			err(1, "open()");
+		fprintf(stderr, "something went wrong: open succeeded\n");
+		exit(1);
 	}
+	sleep(1);
+
+	inotify_fd = inotify_init();
+	if (inotify_fd == -1)
+		err(1, "inotify_init()");
+	ret = inotify_add_watch(inotify_fd, testfile, IN_ALL_EVENTS);
+	if (ret == -1)
+		err(1, "inotify_add_watch()");
+	close(inotify_fd);
+	fprintf(stderr, "close(inotify_fd): success\n");
 
 	sleep(1);
 	kill(pid1, SIGKILL);
