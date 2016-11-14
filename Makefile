@@ -2,6 +2,9 @@ COMMON=error_functions.c
 
 all: fanotify_demo inotify_demo fanotify_bug mkdirs rmdirs ioloop
 
+install:
+	./install-fanotify.sh
+
 fanotify_demo: fanotify_demo.c $(COMMON)
 	gcc -g -o $@ fanotify_demo.c $(COMMON)
 
