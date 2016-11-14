@@ -13,7 +13,7 @@
 #include "tlpi_hdr.h"
 
 #define FS_VOLATILE            0x01000000
-#define IN_VOLATILE            0x08000000
+#define IN_VOLATILE            0//0x08000000
 #define FS_D_INSTANTIATE	(IN_CREATE|IN_ISDIR|FS_VOLATILE)
 
 static void             /* Display information from inotify_event structure */
