@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/fanotify.h>
 #include <sys/inotify.h>
+#include <sys/wait.h>
 
 int main(void)
 {
@@ -63,6 +64,8 @@ int main(void)
 	sleep(1);
 	kill(pid1, SIGKILL);
 	kill(pid2, SIGKILL);
+	waitpid(pid1, NULL, 0);
+	waitpid(pid2, NULL, 0);
 
 	return 0;
 }
