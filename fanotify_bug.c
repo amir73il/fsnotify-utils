@@ -56,6 +56,9 @@ int main(void)
 		inotify_fd = inotify_init();
 		if (inotify_fd == -1)
 			err(1, "inotify_init()");
+		ret = inotify_add_watch(inotify_fd, testfile, IN_ALL_EVENTS);
+		if (ret == -1)
+			err(1, "inotify_add_watch()");
 		close(inotify_fd);
 		fprintf(stderr, "close(inotify_fd): success\n");
 		exit(0);
