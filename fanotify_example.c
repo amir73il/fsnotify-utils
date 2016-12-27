@@ -140,8 +140,25 @@ main(int argc, char *argv[])
                       FAN_EVENT_ON_SB |
                       FAN_OPEN_PERM | FAN_CLOSE_WRITE, AT_FDCWD,
                       argv[1]) == -1) {
-        perror("fanotify_mark");
-        exit(EXIT_FAILURE);
+	    perror("fanotify_mark sb");
+	    if (fanotify_mark(fd, FAN_MARK_ADD,
+			      FAN_OPEN_PERM | FAN_EVENT_ON_CHILD, AT_FDCWD,
+			      argv[1]) == -1) {
+		    perror("fanotify_mark ignored");
+		    exit(EXIT_FAILURE);
+	    }
+	    if (fanotify_mark(fd, FAN_MARK_ADD | FAN_MARK_IGNORED_SURV_MODIFY | FAN_MARK_IGNORED_MASK,
+			      FAN_CLOSE_WRITE, AT_FDCWD,
+			      argv[1]) == -1) {
+		    perror("fanotify_mark ignored");
+		    exit(EXIT_FAILURE);
+	    }
+	    if (fanotify_mark(fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
+			      FAN_OPEN_PERM | FAN_CLOSE_WRITE, AT_FDCWD,
+			      argv[1]) == -1) {
+		    perror("fanotify_mark mount");
+		    exit(EXIT_FAILURE);
+	    }
     }
 
     /* Prepare for polling */
