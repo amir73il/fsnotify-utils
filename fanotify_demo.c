@@ -125,13 +125,9 @@ displayNotifyEvent(struct fanotify_event_metadata *i)
 
 #define BUF_LEN (10 * (sizeof(struct fanotify_event_metadata) + NAME_MAX + 1))
 
-static int add_watch(int notifyFd, const char *dir, const char *name)
+static int add_watch(int notifyFd, const char *path)
 {
-	char path[256];
-	static char last_path[256];
 	int wd;
-
-	snprintf(path, sizeof(path) - 1, "%s/%s", dir ? dir : last_path, name);
 
 	/* Mark the mount for:
 	 * - notification events after closing a write-enabled
@@ -144,19 +140,20 @@ static int add_watch(int notifyFd, const char *dir, const char *name)
 	if (wd == -1) {
 		fprintf(stderr, "fanotify sb watch not supported\n");
 		wd = fanotify_mark(notifyFd, FAN_MARK_ADD,
-				FAN_ALL_EVENTS|FAN_EVENT_ON_CHILD|FAN_ONDIR,
+				FAN_ALL_EVENTS|FAN_EVENT_ON_CHILD,
 				AT_FDCWD, path);
+		if (!wd)
+			wd = fanotify_mark(notifyFd, FAN_MARK_ADD|FAN_MARK_MOUNT,
+					FAN_ALL_EVENTS,
+					AT_FDCWD, path);
 	}
 	if (wd == -1) {
 		int err = errno;
-		if (dir && err == ENOENT)
-			return add_watch(notifyFd, NULL, dir);
 		printf("Failed adding watch on %s: %s\n", path, strerror(err));
 		return wd;
 	}
 
 	printf("Watching %s using wd %d\n", path, wd);
-	strncpy(last_path, path, sizeof(last_path) - 1);
 	return wd;
 }
 
@@ -185,7 +182,7 @@ main(int argc, char *argv[])
     }
 
     for (j = 1; j < argc; j++) {
-	wd = add_watch(notifyFd, argv[j], "");
+	wd = add_watch(notifyFd, argv[j]);
 	if (wd == -1)
 		errExit("notify_add_watch");
     }
