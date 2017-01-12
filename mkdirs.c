@@ -9,22 +9,32 @@
 #include <errno.h>
 
 
-const char *names = "a\0b\0c\0d\0e\0f\0g\0h\0i\0j\0k\0l\0m\0n\0o\0p\0q\0r\0s\0t\0u\0v\0w\0x\0y\0z\0\0";
+const char *names = "0\0!\0@\0#\0_\0+\0a\0b\0c\0d\0e\0f\0g\0h\0i\0j\0k\0l\0m\0n\0o\0p\0q\0r\0s\0t\0u\0v\0w\0x\0y\0z\0\0";
 
-static int do_mkdir(const char *name)
+static int do_mk(const char *name, int isdir)
 {
-	return mkdir(name, 0751);
+	return isdir ? mkdir(name, 0751) : mknod(name, 0644, 0);
 }
 
-typedef int (*name_op)(const char *);
+static int do_rm(const char *name, int isdir)
+{
+	return isdir ? rmdir(name) : unlink(name);
+}
 
-static int iter_names(name_op op)
+static int do_create(const char *name, int isdir)
+{
+	return do_mk(name, isdir) || chmod(name, 0750) || chown(name, 1000, 1000);
+}
+
+typedef int (*name_op)(const char *, int);
+
+static int iter_names(name_op op, int isdir)
 {
 	const char *name = names;
 	int ret;
 
 	while (*name) {
-		ret = op(name);
+		ret = op(name, isdir);
 	       	if (ret && errno != EEXIST && errno != ENOENT) {
 			perror(name);
 			return ret;
@@ -51,7 +61,7 @@ static int iter_dirs(name_op op, int depth)
 	}
 
 	if (depth >= 0) // BFS
-		ret = iter_names(op);
+		ret = iter_names(op, depth);
 	
 	if (ret || depth == 0)
 		goto out;
@@ -74,7 +84,7 @@ static int iter_dirs(name_op op, int depth)
 		name += 2;
 	}
 	if (depth < 0) // DFS
-		ret = iter_names(op);
+		ret = iter_names(op, depth);
 
 out:
 	if (ret)
@@ -99,7 +109,7 @@ void main(int argc, char *argv[])
 	printf("%s depth=%d\n", progname, depth);
 
 	if (strcmp(progname, "mkdirs") == 0)
-		iter_dirs(do_mkdir, depth);
+		iter_dirs(do_create, depth);
 	else if (strcmp(progname, "rmdirs") == 0)
-		iter_dirs(rmdir, -depth);
+		iter_dirs(do_rm, -depth);
 }
