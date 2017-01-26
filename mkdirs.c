@@ -11,9 +11,15 @@
 
 const char *names = "0\0!\0@\0#\0_\0+\0a\0b\0c\0d\0e\0f\0g\0h\0i\0j\0k\0l\0m\0n\0o\0p\0q\0r\0s\0t\0u\0v\0w\0x\0y\0z\0\0";
 
+static off_t file_size = 1024 * 1024;
+
 static int do_mk(const char *name, int isdir)
 {
-	return isdir ? mkdir(name, 0751) : mknod(name, 0644, 0);
+	if (isdir)
+		return mkdir(name, 0751);
+	if (mknod(name, 0644, 0) != 0)
+		return -1;
+	return truncate(name, file_size);
 }
 
 static int do_rm(const char *name, int isdir)
@@ -98,6 +104,11 @@ void main(int argc, char *argv[])
 	const char *progname = basename(argv[0]);
 	int depth = 0;
 
+	if (argc == 1) {
+		printf("usage: %s <directory tree depth> <root of tree> [file size in MB]\n", argv[0]);
+		exit(1);
+	}
+
 	if (argc > 1)
 		depth = atoi(argv[1]);
 
@@ -106,7 +117,10 @@ void main(int argc, char *argv[])
 		exit(1);
 	}
 
-	printf("%s depth=%d\n", progname, depth);
+	if (argc > 3)
+		file_size = atoi(argv[3]) * 1024 * 1024;
+
+	printf("%s tree_depth=%d, file_size=%dMB\n", progname, depth, (int)(file_size >> 20));
 
 	if (strcmp(progname, "mkdirs") == 0)
 		iter_dirs(do_create, depth);
