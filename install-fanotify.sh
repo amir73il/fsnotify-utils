@@ -1,6 +1,4 @@
-sudo mount /mnt/results/
-sudo cp $* /mnt/results/
-sudo umount /mnt/results/
+kvm-cp $*
 
 echo "sudo kvm-xfstests shell"
 echo "cd /results"
