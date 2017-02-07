@@ -16,49 +16,50 @@
 #include "iter.h"
 
 
-static off_t file_size = 1024 * 1024;
+/* -1 indicates no files only dirs */
+static off_t file_size = -1;
 
-static int do_mk(const char *name, int isdir)
+static int do_mk(const char *name, int depth)
 {
-	if (isdir)
+	if (depth || file_size < 0)
 		return mkdir(name, 0751);
 	if (mknod(name, 0644, 0) != 0)
 		return -1;
 	return truncate(name, file_size);
 }
 
-static int do_rm(const char *name, int isdir)
+static int do_rm(const char *name, int depth)
 {
-	return isdir ? rmdir(name) : unlink(name);
+	return (depth || file_size < 0) ? rmdir(name) : unlink(name);
 }
 
-static int do_create(const char *name, int isdir)
+static int do_create(const char *name, int depth)
 {
-	return do_mk(name, isdir) || chmod(name, 0750) || chown(name, 1000, 1000);
+	return do_mk(name, depth) || chmod(name, 0750) || chown(name, 1000, 1000);
 }
 
 void main(int argc, char *argv[])
 {
 	const char *progname = basename(argv[0]);
+	const char *path = argv[1];
 	int depth = 0;
 
-	if (argc == 1) {
-		printf("usage: %s <directory tree depth> <root of tree> [file size in MB]\n", argv[0]);
+	if (argc < 3) {
+		printf("usage: %s <root of directory tree> <directory tree depth> [file size in MB]\n", progname);
 		exit(1);
 	}
 
-	if (argc > 1)
-		depth = atoi(argv[1]);
+	depth = atoi(argv[2]);
 
-	if (argc > 2 && chdir(argv[2])) {
-		perror(argv[2]);
+	if (chdir(path)) {
+		perror(path);
 		exit(1);
 	}
 
 	if (argc > 3)
 		file_size = atoi(argv[3]) * 1024 * 1024;
 
-	printf("%s tree_depth=%d, file_size=%dMB\n", progname, depth, (int)(file_size >> 20));
+	printf("%s %s tree_depth=%d, file_size=%d\n", progname, path, depth, (int)(file_size >> 20));
 
 	if (strcmp(progname, "mkdirs") == 0)
 		iter_dirs(do_create, depth);

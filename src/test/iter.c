@@ -17,13 +17,13 @@
 
 const char *names = "0\0!\0@\0#\0_\0+\0a\0b\0c\0d\0e\0f\0g\0h\0i\0j\0k\0l\0m\0n\0o\0p\0q\0r\0s\0t\0u\0v\0w\0x\0y\0z\0\0";
 
-static int iter_names(iter_op op, int isdir)
+static int iter_names(iter_op op, int depth)
 {
 	const char *name = names;
 	int ret;
 
 	while (*name) {
-		ret = op(name, isdir);
+		ret = op(name, depth);
 	       	if (ret && errno != EEXIST && errno != ENOENT) {
 			perror(name);
 			return ret;

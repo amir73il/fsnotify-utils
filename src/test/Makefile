@@ -1,5 +1,5 @@
 PROGS= fanotify_demo inotify_demo fanotify_bug
-PROGS+= sbwatch addmarks rmmarks mkdirs rmdirs ioloop
+PROGS+= sbwatch watchdirs mkdirs rmdirs ioloop
 
 TLPI=../lib/error_functions.c
 
@@ -23,6 +23,3 @@ inotify_demo: inotify_demo.c $(TLPI)
 
 rmdirs: mkdirs
 	ln -s mkdirs rmdirs
-
-rmmarks: addmarks
-	ln -s addmarks rmmarks
