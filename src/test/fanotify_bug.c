@@ -1,3 +1,9 @@
+/*
+ * fanotify stalled permission check bug
+ *
+ * FROM: Miklos Szeredi <miklos@szeredi.hu>
+ */
+
 #include <err.h>
 #include <fcntl.h>
 #include <errno.h>

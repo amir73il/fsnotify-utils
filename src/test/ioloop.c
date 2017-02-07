@@ -1,3 +1,9 @@
+/*
+ * ioloop - benchmark small reads/writes
+ *
+ * Copyright (C) 2016 CTERA Network by Amir Goldstein <amir73il@gmail.com>
+ */
+
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>

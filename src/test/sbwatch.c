@@ -1,3 +1,11 @@
+/*
+ * sbwatch - example use of fanotify super block root watch
+ *
+ * Copyright (C) 2016 CTERA Network by Amir Goldstein <amir73il@gmail.com>
+ *
+ * Based on fantest2.c by Marko Rauhamaa <marko.rauhamaa@f-secure.com>
+ */
+
 #define _GNU_SOURCE     /* Needed to get O_LARGEFILE definition */
 #include <errno.h>
 #include <fcntl.h>
