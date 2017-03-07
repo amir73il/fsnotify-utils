@@ -15,7 +15,7 @@
 #include <errno.h>
 #include "iter.h"
 
-const char *names = "0\0!\0@\0#\0_\0+\0a\0b\0c\0d\0e\0f\0g\0h\0i\0j\0k\0l\0m\0n\0o\0p\0q\0r\0s\0t\0u\0v\0w\0x\0y\0z\0\0";
+const char *names = "0\0""1\0""2\0""3\0""4\0""5\0""6\0""7\0""8\0""9\0""a\0b\0c\0d\0e\0f\0g\0h\0i\0j\0k\0l\0m\0n\0o\0p\0q\0r\0s\0t\0u\0v\0\0";
 
 static int iter_names(iter_op op, int depth)
 {
