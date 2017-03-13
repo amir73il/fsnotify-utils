@@ -8,13 +8,13 @@ fi
 
 #SLEEP='sleep 1'
 
-echo "file fs/notify/fanotify/*  +p" > /sys/kernel/debug/dynamic_debug/control
+#echo "file fs/notify/fanotify/*  +p" > /sys/kernel/debug/dynamic_debug/control
 rm -rf a
 mkdir -p a/b/c/d/e/f/g/
 mkdir -p /tmp/g
 mount -o bind a/b/c/d/e/f/g /tmp/g
 #echo 3 > /proc/sys/vm/drop_caches
-./inotify_demo $WD &
+#./inotify_demo $WD &
 ./fanotify_demo $WD &
 
 echo Hit any key to start events...
