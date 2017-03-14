@@ -21,16 +21,16 @@ echo Hit any key to start events...
 read a
 
 $SLEEP
-touch a/1
+touch a/1 a/2 a/3
 mknod a/0 c 0 0
 chmod +x a/0
-mkdir a/dir0
+mkdir a/dir0 a/dir1 a/dir2
 $SLEEP
-mv a/0 a/1
-mv a/dir0 a/dir1
+mv a/0 a/3
+mv a/dir0 a/dir3
 $SLEEP
-rm a/1
-rmdir a/dir1
+rm a/1 a/2 a/3
+rmdir a/dir1 a/dir2 a/dir3
 sleep 1
 touch a/b/c/d/e/f/g/0
 chmod +x a/b/c/d/e/f/g/0
