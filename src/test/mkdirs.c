@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2016 CTERA Network by Amir Goldstein <amir73il@gmail.com>
  */
-
+#define _GNU_SOURCE
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
@@ -16,26 +16,40 @@
 #include "iter.h"
 
 
-/* -1 indicates no files only dirs */
-static off_t file_size = -1;
+/* <0 indicates sparse file of size -file_size */
+static off_t file_size;
+
+static int create_file(const char *name)
+{
+	int ret, fd = creat(name, 0644);
+
+	if (fd < 0) {
+		perror("create file");
+		return fd;
+	}
+
+	if (file_size > 0)
+		ret = fallocate(fd, 0, 0, file_size);
+	else if (file_size < 0)
+		ret = ftruncate(fd, -file_size);
+
+	close(fd);
+	return ret;
+}
 
 static int do_mk(const char *name, int depth)
 {
-	if (depth || file_size < 0)
-		return mkdir(name, 0751);
-	if (mknod(name, 0644, 0) != 0)
-		return -1;
-	return truncate(name, file_size);
+	return depth ? mkdir(name, 0751) : create_file(name);
 }
 
 static int do_rm(const char *name, int depth)
 {
-	return (depth || file_size < 0) ? rmdir(name) : unlink(name);
+	return depth ? rmdir(name) : unlink(name);
 }
 
 static int do_create(const char *name, int depth)
 {
-	return do_mk(name, depth) || chmod(name, 0750) || chown(name, 1000, 1000);
+	return do_mk(name, depth);
 }
 
 void main(int argc, char *argv[])
@@ -44,8 +58,8 @@ void main(int argc, char *argv[])
 	const char *path = argv[1];
 	int depth = 0;
 
-	if (argc < 3) {
-		printf("usage: %s <root of directory tree> <directory tree depth> [file size in MB]\n", progname);
+	if (argc < 4) {
+		printf("usage: %s <root of directory tree> <directory tree depth> <file size in MB>\n", progname);
 		exit(1);
 	}
 
@@ -56,10 +70,10 @@ void main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (argc > 3)
-		file_size = atoi(argv[3]) * 1024 * 1024;
+	file_size = atoi(argv[3]);
 
-	printf("%s %s tree_depth=%d, file_size=%d\n", progname, path, depth, (int)(file_size >> 20));
+	printf("%s %s tree_depth=%d, file_size=%dMB\n", progname, path, depth, (int)file_size);
+	file_size *= 1024 * 1024;
 
 	if (strcmp(progname, "mkdirs") == 0)
 		iter_dirs(do_create, depth);
