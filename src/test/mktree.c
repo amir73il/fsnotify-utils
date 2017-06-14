@@ -1,5 +1,5 @@
 /*
- * mkdirs/rmdirs - fast create/remove pre defined directory tree
+ * mktree/rmtree - fast create/remove pre defined directory tree
  *
  * Copyright (C) 2016 CTERA Network by Amir Goldstein <amir73il@gmail.com>
  */
@@ -84,8 +84,8 @@ void main(int argc, char *argv[])
 	if (iter_parseopt(argc, argv) == -1)
 		usage();
 
-	if (strcmp(progname, "mkdirs") == 0)
+	if (strcmp(progname, "mktree") == 0)
 		iter_dirs(do_create, depth);
-	else if (strcmp(progname, "rmdirs") == 0)
+	else if (strcmp(progname, "rmtree") == 0)
 		iter_dirs(do_rm, -depth);
 }
