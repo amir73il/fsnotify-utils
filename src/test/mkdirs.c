@@ -16,12 +16,11 @@
 #include "iter.h"
 
 
-/* <0 indicates sparse file of size -file_size */
-static off_t file_size;
+static off_t file_size; /* < 0 indicates sparse file of size -file_size */
 
 static int create_file(const char *name)
 {
-	int ret, fd = creat(name, 0644);
+	int ret = 0, fd = creat(name, 0644);
 
 	if (fd < 0) {
 		perror("create file");
@@ -52,16 +51,24 @@ static int do_create(const char *name, int depth)
 	return do_mk(name, depth);
 }
 
+static const char *progname;
+
+void usage()
+{
+	fprintf(stderr, "usage: %s <root of dirtree> <dirtree depth> <filesize MB> [options]\n", progname);
+	fprintf(stderr, "options:\n");
+	iter_usage();
+	exit(1);
+}
+
 void main(int argc, char *argv[])
 {
-	const char *progname = basename(argv[0]);
 	const char *path = argv[1];
 	int depth = 0;
 
-	if (argc < 4) {
-		printf("usage: %s <root of directory tree> <directory tree depth> <file size in MB>\n", progname);
-		exit(1);
-	}
+	progname = basename(argv[0]);
+	if (argc < 4)
+		usage();
 
 	depth = atoi(argv[2]);
 
@@ -71,9 +78,11 @@ void main(int argc, char *argv[])
 	}
 
 	file_size = atoi(argv[3]);
-
-	printf("%s %s tree_depth=%d, file_size=%dMB\n", progname, path, depth, (int)file_size);
+	printf("%s %s tree_depth=%d file_size=%dMB\n", progname, path, depth, (int)file_size);
 	file_size *= 1024 * 1024;
+
+	if (iter_parseopt(argc, argv) == -1)
+		usage();
 
 	if (strcmp(progname, "mkdirs") == 0)
 		iter_dirs(do_create, depth);

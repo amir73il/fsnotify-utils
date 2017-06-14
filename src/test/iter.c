@@ -13,22 +13,80 @@
 #include <libgen.h>
 #include <string.h>
 #include <errno.h>
+#include <limits.h>
 #include "iter.h"
 
-const char *names = "0\0""1\0""2\0""3\0""4\0""5\0""6\0""7\0""8\0""9\0""a\0b\0c\0d\0e\0f\0g\0h\0i\0j\0k\0l\0m\0n\0o\0p\0q\0r\0s\0t\0u\0v\0\0";
+int tree_width = 32;
+int leaf_count;
+int node_count;
+char *file_prefix = "f";
+char *dir_prefix = "d";
+
+void iter_usage()
+{
+	fprintf(stderr, "-w <dirtree width>    (default = 32)\n");
+	fprintf(stderr, "-c <leaf files count> (default = 32)\n");
+	fprintf(stderr, "-C <node files count> (default = 0)\n");
+	fprintf(stderr, "-f <filename prefix>  (default = 'f')\n");
+	fprintf(stderr, "-d <dirname prefix>   (default = 'd')\n");
+}
+
+int iter_parseopt(int argc, char *argv[])
+{
+	int c;
+
+	while ((c = getopt(argc, argv, "c:C:w:f:d:")) != -1) {
+		switch (c) {
+			case 'c':
+				leaf_count = atoi(optarg);
+				break;
+			case 'C':
+				node_count = atoi(optarg);
+				break;
+			case 'w':
+				tree_width = atoi(optarg);
+				break;
+			case 'f':
+				file_prefix = optarg;
+				break;
+			case 'd':
+				dir_prefix = optarg;
+				break;
+			default:
+				fprintf(stderr, "illegal option '%s'\n", argv[optind]);
+			case 'h':
+				return -1;
+		}
+	}
+
+	printf("tree_width=%d\nleaf_count=%d\nnode_count=%d\nfile_prefix='%s'\ndir_prefix='%s'\n",
+		tree_width, leaf_count, node_count, file_prefix, dir_prefix);
+	return 0;
+}
 
 static int iter_names(iter_op op, int depth)
 {
-	const char *name = names;
 	int ret;
+	int i, count = depth ? tree_width : leaf_count;
+	const char *prefix = depth ? dir_prefix : file_prefix;
+	char name[NAME_MAX+1];
 
-	while (*name) {
+	name[NAME_MAX] = 0;
+iter_files:
+	for (i = 0; i < count; i++) {
+		snprintf(name, NAME_MAX, "%s%d", prefix, i);
 		ret = op(name, depth);
 	       	if (ret && errno != EEXIST && errno != ENOENT) {
 			perror(name);
 			return ret;
 		}
-		name += 2;
+	}
+
+	if (depth && node_count) {
+		depth = 0;
+		count = node_count;
+		prefix = file_prefix;
+		goto iter_files;
 	}
 
 	return 0;
@@ -40,9 +98,12 @@ static int iter_names(iter_op op, int depth)
 
 int iter_dirs(iter_op op, int depth)
 {
-	const char *name = names;
 	int ret = 0;
 	int fd = open(".", O_PATH);
+	int i, count = tree_width;
+	char name[NAME_MAX+1];
+
+	name[NAME_MAX] = 0;
 
 	if (fd < 0) {
 		perror("open(.)");
@@ -55,7 +116,8 @@ int iter_dirs(iter_op op, int depth)
 	if (ret || depth == 0)
 		goto out;
 
-	while (*name) {
+	for (i = 0; i < count; i++) {
+		snprintf(name, NAME_MAX, "%s%d", dir_prefix, i);
 		if (ret = chdir(name) && errno != ENOENT) {
 			perror("chdir");
 			goto out;
@@ -70,7 +132,6 @@ int iter_dirs(iter_op op, int depth)
 			perror("fchdir");
 			goto out;
 		}
-		name += 2;
 	}
 	if (depth < 0) // DFS
 		ret = iter_names(op, depth);
