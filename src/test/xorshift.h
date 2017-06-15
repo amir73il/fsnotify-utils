@@ -3,6 +3,9 @@
 
 /* From https://en.wikipedia.org/wiki/Xorshift */
 
+
+#define mixseed(state, x) state[3] = x; xorshift128(state)
+
 static inline uint32_t xorshift128(uint32_t state[static 4])
 {
 	uint32_t t = state[3];
@@ -27,5 +30,16 @@ static inline uint64_t xorshift64star(uint64_t state[static 1])
 	state[0] = x;
 
 	return x * 0x2545F4914F6CDD1D;
+}
+
+static inline unsigned long strhash(unsigned char *str)
+{
+    unsigned long hash = 5381;
+    int c;
+
+    while (c = *str++)
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+    return hash;
 }
 #endif

@@ -22,7 +22,6 @@ static off_t file_size_mb;
 
 #define MB (1024 * 1024)
 
-static unsigned int seed = 42;
 static uint32_t state[4];
 static char data[MB];
 static char *data_type;
@@ -100,7 +99,7 @@ void usage()
 
 void main(int argc, char *argv[])
 {
-	const char *path = argv[1];
+	char *path = argv[1];
 	int depth = 0;
 
 	progname = basename(argv[0]);
@@ -116,16 +115,28 @@ void main(int argc, char *argv[])
 
 	file_size_mb = strtol(argv[3], &data_type, 10);
 
-	printf("%s %s\ntree_depth=%d\nfile_size=%dMB\ndata_type='%s'\n", progname, path, depth, (int)file_size_mb, data_type);
-
-	if (*data_type == 'r') {
-		// TODO: parse seed argument
-		printf("random_seed=%u\n", seed);
-		state[0] = seed;
-	}
+	printf("%s %s\ntree_depth=%d\nfile_size=%dMB\ndata_type='%s'\n",
+		progname, path, depth, (int)file_size_mb, data_type);
 
 	if (iter_parseopt(argc, argv) == -1)
 		usage();
+
+	printf("tree_width=%d\nleaf_count=%d\nnode_count=%d\nfile_prefix='%s'\ndir_prefix='%s'\nrandom_seed=%u\n",
+		tree_width, leaf_count, node_count, file_prefix, dir_prefix, random_seed);
+
+	if (*data_type == 'r') {
+		// mix params with random seed
+		mixseed(state, strhash(basename(path)));
+		mixseed(state, depth);
+		mixseed(state, file_size_mb);
+		mixseed(state, tree_width);
+		mixseed(state, leaf_count);
+		mixseed(state, node_count);
+		mixseed(state, strhash(file_prefix));
+		mixseed(state, strhash(dir_prefix));
+		mixseed(state, random_seed);
+		printf("mixed_seed=%u\n", state[0]);
+	}
 
 	if (strcmp(progname, "mktree") == 0)
 		iter_dirs(do_create, depth);

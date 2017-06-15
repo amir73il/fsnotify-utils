@@ -6,6 +6,7 @@ extern int leaf_count;
 extern int node_count;
 extern char *file_prefix;
 extern char *dir_prefix;
+extern unsigned random_seed;
 
 void iter_usage();
 int iter_parseopt(int argc, char *argv[]);

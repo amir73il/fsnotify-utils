@@ -21,12 +21,14 @@ int leaf_count = 32;
 int node_count;
 char *file_prefix = "f";
 char *dir_prefix = "d";
+unsigned random_seed = 42;
 
 void iter_usage()
 {
 	fprintf(stderr, "-w <dirtree width>    (default = 32)\n");
 	fprintf(stderr, "-c <leaf files count> (default = 32)\n");
 	fprintf(stderr, "-C <node files count> (default = 0)\n");
+	fprintf(stderr, "-s <random seed>      (default = 42)\n");
 	fprintf(stderr, "-f <filename prefix>  (default = 'f')\n");
 	fprintf(stderr, "-d <dirname prefix>   (default = 'd')\n");
 }
@@ -35,7 +37,7 @@ int iter_parseopt(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "c:C:w:f:d:")) != -1) {
+	while ((c = getopt(argc, argv, "c:C:w:s:f:d:")) != -1) {
 		switch (c) {
 			case 'c':
 				leaf_count = atoi(optarg);
@@ -45,6 +47,9 @@ int iter_parseopt(int argc, char *argv[])
 				break;
 			case 'w':
 				tree_width = atoi(optarg);
+				break;
+			case 's':
+				random_seed = atoi(optarg);
 				break;
 			case 'f':
 				file_prefix = optarg;
@@ -59,8 +64,6 @@ int iter_parseopt(int argc, char *argv[])
 		}
 	}
 
-	printf("tree_width=%d\nleaf_count=%d\nnode_count=%d\nfile_prefix='%s'\ndir_prefix='%s'\n",
-		tree_width, leaf_count, node_count, file_prefix, dir_prefix);
 	return 0;
 }
 
