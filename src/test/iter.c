@@ -17,7 +17,7 @@
 #include "iter.h"
 
 int tree_width = 32;
-int leaf_count;
+int leaf_count = 32;
 int node_count;
 char *file_prefix = "f";
 char *dir_prefix = "d";
@@ -76,7 +76,7 @@ iter_files:
 	for (i = 0; i < count; i++) {
 		snprintf(name, NAME_MAX, "%s%d", prefix, i);
 		ret = op(name, depth);
-	       	if (ret && errno != EEXIST && errno != ENOENT) {
+		if (ret && errno != EEXIST && errno != ENOENT) {
 			perror(name);
 			return ret;
 		}
@@ -112,7 +112,7 @@ int iter_dirs(iter_op op, int depth)
 
 	if (depth >= 0) // BFS
 		ret = iter_names(op, depth);
-	
+
 	if (ret || depth == 0)
 		goto out;
 
