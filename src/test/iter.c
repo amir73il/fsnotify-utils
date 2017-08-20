@@ -21,16 +21,17 @@ int leaf_count = 32;
 int node_count;
 char *file_prefix = "f";
 char *dir_prefix = "d";
-unsigned random_seed = 42;
+int data_seed = 0;
 
 void iter_usage()
 {
 	fprintf(stderr, "-w <dirtree width>    (default = 32)\n");
 	fprintf(stderr, "-c <leaf files count> (default = 32)\n");
 	fprintf(stderr, "-C <node files count> (default = 0)\n");
-	fprintf(stderr, "-s <random seed>      (default = 42)\n");
 	fprintf(stderr, "-f <filename prefix>  (default = 'f')\n");
 	fprintf(stderr, "-d <dirname prefix>   (default = 'd')\n");
+	fprintf(stderr, "-s <data type/seed>   (default = 0)\n");
+	fprintf(stderr, "data type/seed may be 0 (default) for fallocate, < 0 for sparse file and > 0 for seed of random data\n");
 }
 
 int iter_parseopt(int argc, char *argv[])
@@ -49,7 +50,7 @@ int iter_parseopt(int argc, char *argv[])
 				tree_width = atoi(optarg);
 				break;
 			case 's':
-				random_seed = atoi(optarg);
+				data_seed = atoi(optarg);
 				break;
 			case 'f':
 				file_prefix = optarg;
