@@ -30,6 +30,7 @@
 #define FILEID_INO64_GEN_PARENT (FILEID_INO32_GEN_PARENT|XFS_FILEID_TYPE_64FLAG)
 #endif
 
+#define FAN_RENAME		0x10000000
 #define FAN_EVENT_ON_SB         0x01000000
 #define FAN_EVENT_ON_DESCENDANT (FAN_EVENT_ON_CHILD | FAN_EVENT_ON_SB)
 
@@ -38,7 +39,7 @@
 #define FAN_EVENT_INFO_FH       0x400
 
 #define FAN_DENTRY_EVENTS (IN_ATTRIB |\
-		IN_MOVED_FROM | IN_MOVED_TO | IN_MOVE_SELF |\
+		IN_MOVE | IN_MOVE_SELF | FAN_RENAME |\
 		IN_CREATE | IN_DELETE)
 
 /*
@@ -81,6 +82,7 @@ displayNotifyEvent(struct fanotify_event_metadata *i)
     if (i->mask & IN_OPEN)          printf("FAN_OPEN ");
     if (i->mask & IN_Q_OVERFLOW)    printf("FAN_Q_OVERFLOW ");
     if (i->mask & IN_UNMOUNT)       printf("FAN_UNMOUNT ");
+    if (i->mask & FAN_RENAME)       printf("FAN_RENAME ");
     printf("\n");
 
     if (i->fd > 0) {

@@ -35,8 +35,8 @@ sleep 1
 touch a/b/c/d/e/f/g/0
 chmod +x a/b/c/d/e/f/g/0
 $SLEEP
-mv a/b/c/d/e/f/g/0 a/b/c/d/e/f/g/1
-rm a/b/c/d/e/f/g/1
+mv a/b/c/d/e/f/g/0 a/b/c/d/e/f/1
+rm a/b/c/d/e/f/1
 $SLEEP
-mv a/b/c/d/e/f/g a/b/c/d/e/f/G
-rmdir a/b/c/d/e/f/G
+mv a/b/c/d/e/f/g a/b/c/d/e/G
+rmdir a/b/c/d/e/G
