@@ -48,10 +48,10 @@ static int create_file(const char *name)
 		return fd;
 	}
 
-	if (data_seed == 0) {
-		ret = fallocate(fd, 0, 0, file_size * block_size);
-	} else if (data_seed < 0) {
+	if (!file_size || data_seed < 0) {
 		ret = ftruncate(fd, file_size * block_size);
+	} else if (data_seed == 0) {
+		ret = fallocate(fd, 0, 0, file_size * block_size);
 	} else {
 		for (i = 0; i < file_size; i++) {
 			ret = write_random_block(fd);
