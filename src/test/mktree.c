@@ -96,14 +96,13 @@ void usage()
 void main(int argc, char *argv[])
 {
 	char *path = argv[1];
-	int depth = 0;
 	char *size_unit;
 
 	progname = basename(argv[0]);
 	if (argc < 4)
 		usage();
 
-	depth = atoi(argv[2]);
+	tree_depth = atoi(argv[2]);
 
 	if (chdir(path)) {
 		perror(path);
@@ -131,7 +130,7 @@ void main(int argc, char *argv[])
 	}
 
 	printf("%s %s\ntree_depth=%d\nfile_size=%d(%s)\n",
-		progname, path, depth, (int)file_size, size_unit);
+		progname, path, tree_depth, (int)file_size, size_unit);
 
 	if (iter_parseopt(argc, argv) == -1)
 		usage();
@@ -142,7 +141,7 @@ void main(int argc, char *argv[])
 	if (data_seed > 0) {
 		// mix params with random seed
 		mixseed(state, strhash(basename(path)));
-		mixseed(state, depth);
+		mixseed(state, tree_depth);
 		mixseed(state, file_size);
 		mixseed(state, tree_width);
 		mixseed(state, leaf_count);
@@ -154,7 +153,7 @@ void main(int argc, char *argv[])
 	}
 
 	if (strcmp(progname, "mktree") == 0)
-		iter_dirs(do_create, depth);
+		iter_tree(do_create, tree_depth);
 	else if (strcmp(progname, "rmtree") == 0)
-		iter_dirs(do_rm, -depth);
+		iter_tree(do_rm, -tree_depth);
 }

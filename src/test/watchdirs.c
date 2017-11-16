@@ -268,7 +268,7 @@ void main(int argc, char *argv[])
 	}
 
 	/* Add marks in DFS so we won't trigger our own open permission events */
-	iter_dirs(do_add_mark, -depth);
+	iter_tree(do_add_mark, -depth);
 
 	/* Listen until user input - remove marks on dir close events */
 	listen_events(fanotify_fd);
