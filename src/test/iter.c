@@ -24,6 +24,7 @@ char *file_prefix = "f";
 char *dir_prefix = "d";
 int data_seed = 0;
 int trace_depth = 0;
+int start_id = 0;
 int dir_id_log16 = 0;
 
 void iter_usage()
@@ -34,7 +35,7 @@ void iter_usage()
 	fprintf(stderr, "-f <filename prefix>  (default = 'f')\n");
 	fprintf(stderr, "-d <dirname prefix>   (default = 'd')\n");
 	fprintf(stderr, "-v <trace depth>      (default = 0, implies -x)\n");
-	fprintf(stderr, "-x (specify for exclusive filename suffix)\n");
+	fprintf(stderr, "-x <start global id>  (default = 0, id in hexa as printed by -v deepest trace prints)\n");
 	fprintf(stderr, "-s <data type/seed>   (default = 0)\n");
 	fprintf(stderr, "data type/seed may be 0 (default) for fallocate, < 0 for sparse file and > 0 for seed of random data\n");
 }
@@ -43,7 +44,7 @@ int iter_parseopt(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "c:C:w:s:f:d:v:x")) != -1) {
+	while ((c = getopt(argc, argv, "c:C:w:s:f:d:v:x:")) != -1) {
 		switch (c) {
 			case 'c':
 				leaf_count = atoi(optarg);
@@ -66,7 +67,10 @@ int iter_parseopt(int argc, char *argv[])
 			case 'v':
 				trace_depth = atoi(optarg);
 				/* Implies -x so created dir name is a progress indicator */
+				dir_id_log16 = 1;
+				break;
 			case 'x':
+				start_id = strtoul(optarg, NULL, 16);
 				dir_id_log16 = 1;
 				break;
 			default:
@@ -126,20 +130,28 @@ iter_files:
 #define O_PATH 010000000
 #endif
 
-static void trace_begin(char *name, int depth, int ret)
+static int trace_begin(char *name, int depth, int id)
 {
 	int tabs = tree_depth - depth;
+	int ret = id;
 
-	if (!ret && (tabs >= trace_depth))
-		return;
+	if (id >= 0 && (tabs >= trace_depth))
+		return 0;
+	/* Skip only trace leaf id's */
+	if (!start_id || (tabs < trace_depth - 1))
+		ret = 0;
+	else
+		ret = (id < start_id) ? 1 : 0;
 	while (tabs--)
 		putchar('\t');
-	printf("%s%s\n", name, ret ? " ABORTED!" : "...");
+	printf("%s%s\n", name, ret < 0 ? " ABORTED!" :
+			(ret ? " SKIPPED" : "..."));
+	return ret;
 }
 
 static void trace_end(char *name, int depth, int ret)
 {
-	if (ret) trace_begin(name, depth, ret);
+	if (ret < 0) trace_begin(name, depth, ret);
 }
 
 int iter_dirs(iter_op op, int depth, int parent)
@@ -170,13 +182,13 @@ int iter_dirs(iter_op op, int depth, int parent)
 			goto out;
 		}
 
-		trace_begin(name, depth, 0);
-		if (depth > 0) // BFS
+		ret = trace_begin(name, depth, id);
+		if (!ret && depth > 0) // BFS
 			ret = iter_dirs(op, depth - 1, id << (dir_id_log16*4));
-		if (depth < 0) // DFS
+		if (!ret && depth < 0) // DFS
 			ret = iter_dirs(op, depth + 1, id << (dir_id_log16*4));
 		trace_end(name, depth, ret);
-		if (ret)
+		if (ret < 0)
 			goto out;
 
 		if (ret = fchdir(fd)) {
