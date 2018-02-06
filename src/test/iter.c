@@ -30,6 +30,7 @@ int dir_id_log16 = 0;
 typedef long long int xid_t;
 
 xid_t start_id = 0;
+xid_t end_id = LLONG_MAX;
 
 void iter_usage()
 {
@@ -40,6 +41,7 @@ void iter_usage()
 	fprintf(stderr, "-d <dirname prefix>   (default = 'd')\n");
 	fprintf(stderr, "-v <trace depth>      (default = 0, implies -x)\n");
 	fprintf(stderr, "-x <start global id>  (default = 0, id in hexa as printed by -v deepest trace prints)\n");
+	fprintf(stderr, "-X <end global id>  (default = MAX, id in hexa as printed by -v deepest trace prints)\n");
 	fprintf(stderr, "-s <data type/seed> [-k] (default = 0)\n");
 	fprintf(stderr, "data type/seed may be 0 (default) for fallocate, < 0 for sparse file and > 0 for seed of random data\n");
 	fprintf(stderr, "By default, existing file is truncated to zero before its data is allocated and initialized.\n");
@@ -51,7 +53,7 @@ int iter_parseopt(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "c:C:w:s:f:d:v:x:k")) != -1) {
+	while ((c = getopt(argc, argv, "c:C:w:s:f:d:v:x:X:k")) != -1) {
 		switch (c) {
 			case 'c':
 				leaf_count = atoi(optarg);
@@ -81,6 +83,10 @@ int iter_parseopt(int argc, char *argv[])
 				break;
 			case 'x':
 				start_id = strtoll(optarg, NULL, 16);
+				dir_id_log16 = 1;
+				break;
+			case 'X':
+				end_id = strtoll(optarg, NULL, 16);
 				dir_id_log16 = 1;
 				break;
 			default:
@@ -117,7 +123,7 @@ static int skip_id(int depth, xid_t id)
 		return 0;
 
 	/* Skip only trace leaf id's */
-	return ((id < start_id) && (tabs == (trace_depth - 1)));
+	return (((id < start_id) || id > end_id) && (tabs == (trace_depth - 1)));
 }
 
 static int iter_names(iter_op op, int depth, xid_t parent)
