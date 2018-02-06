@@ -24,8 +24,11 @@ char *file_prefix = "f";
 char *dir_prefix = "d";
 int data_seed = 0;
 int trace_depth = 0;
-int start_id = 0;
 int dir_id_log16 = 0;
+
+typedef long long int xid_t;
+
+xid_t start_id = 0;
 
 void iter_usage()
 {
@@ -70,7 +73,7 @@ int iter_parseopt(int argc, char *argv[])
 				dir_id_log16 = 1;
 				break;
 			case 'x':
-				start_id = strtoul(optarg, NULL, 16);
+				start_id = strtoll(optarg, NULL, 16);
 				dir_id_log16 = 1;
 				break;
 			default:
@@ -83,23 +86,23 @@ int iter_parseopt(int argc, char *argv[])
 	return 0;
 }
 
-static int create_name(char *buf, int len, int is_dir, int parent, int i)
+static xid_t create_name(char *buf, int len, int is_dir, xid_t parent, xid_t i)
 {
 	const char *prefix = is_dir ? dir_prefix : file_prefix;
-	int id;
+	xid_t id;
 
 	if (dir_id_log16) {
 		id = parent + i;
-		snprintf(buf, len, "%s%x", prefix, id);
+		snprintf(buf, len, "%s%llx", prefix, id);
 	} else {
 		id = i;
-		snprintf(buf, len, "%s%d", prefix, i);
+		snprintf(buf, len, "%s%lld", prefix, i);
 	}
 
 	return id;
 }
 
-static int iter_names(iter_op op, int depth, int parent)
+static int iter_names(iter_op op, int depth, xid_t parent)
 {
 	int ret;
 	int i, count = depth ? tree_width : leaf_count;
@@ -130,37 +133,44 @@ iter_files:
 #define O_PATH 010000000
 #endif
 
-static int trace_begin(char *name, int depth, int id)
+static void trace_print(char *name, int depth, int ret)
 {
 	int tabs = tree_depth - depth;
-	int ret = id;
 
-	if (id >= 0 && (tabs >= trace_depth))
-		return 0;
-	/* Skip only trace leaf id's */
-	if (!start_id || (tabs < trace_depth - 1))
-		ret = 0;
-	else
-		ret = (id < start_id) ? 1 : 0;
 	while (tabs--)
 		putchar('\t');
 	printf("%s%s\n", name, ret < 0 ? " ABORTED!" :
 			(ret ? " SKIPPED" : "..."));
+}
+
+static int trace_begin(char *name, int depth, xid_t id)
+{
+	int tabs = tree_depth - depth;
+	int ret = 0;
+
+	if (tabs >= trace_depth)
+		return 0;
+
+	/* Skip only trace leaf id's */
+	if ((id < start_id) && (tabs == (trace_depth - 1)))
+		ret = 1;
+
+	trace_print(name, depth, ret);
 	return ret;
 }
 
 static void trace_end(char *name, int depth, int ret)
 {
-	if (ret < 0) trace_begin(name, depth, ret);
+	if (ret < 0) trace_print(name, depth, ret);
 }
 
-int iter_dirs(iter_op op, int depth, int parent)
+int iter_dirs(iter_op op, int depth, xid_t parent)
 {
 	int ret = 0;
 	int fd = open(".", O_PATH);
 	int i, count = tree_width;
 	char name[NAME_MAX+1];
-	int id;
+	xid_t id;
 
 	name[NAME_MAX] = 0;
 
