@@ -23,6 +23,7 @@ int node_count;
 char *file_prefix = "f";
 char *dir_prefix = "d";
 int data_seed = 0;
+int trace_depth = 0;
 int dir_id_log16 = 0;
 
 void iter_usage()
@@ -32,6 +33,7 @@ void iter_usage()
 	fprintf(stderr, "-C <node files count> (default = 0)\n");
 	fprintf(stderr, "-f <filename prefix>  (default = 'f')\n");
 	fprintf(stderr, "-d <dirname prefix>   (default = 'd')\n");
+	fprintf(stderr, "-v <trace depth>      (default = 0, implies -x)\n");
 	fprintf(stderr, "-x (specify for exclusive filename suffix)\n");
 	fprintf(stderr, "-s <data type/seed>   (default = 0)\n");
 	fprintf(stderr, "data type/seed may be 0 (default) for fallocate, < 0 for sparse file and > 0 for seed of random data\n");
@@ -41,7 +43,7 @@ int iter_parseopt(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "c:C:w:s:f:d:x")) != -1) {
+	while ((c = getopt(argc, argv, "c:C:w:s:f:d:v:x")) != -1) {
 		switch (c) {
 			case 'c':
 				leaf_count = atoi(optarg);
@@ -61,6 +63,9 @@ int iter_parseopt(int argc, char *argv[])
 			case 'd':
 				dir_prefix = optarg;
 				break;
+			case 'v':
+				trace_depth = atoi(optarg);
+				/* Implies -x so created dir name is a progress indicator */
 			case 'x':
 				dir_id_log16 = 1;
 				break;
@@ -121,6 +126,22 @@ iter_files:
 #define O_PATH 010000000
 #endif
 
+static void trace_begin(char *name, int depth, int ret)
+{
+	int tabs = tree_depth - depth;
+
+	if (!ret && (tabs >= trace_depth))
+		return;
+	while (tabs--)
+		putchar('\t');
+	printf("%s%s\n", name, ret ? " ABORTED!" : "...");
+}
+
+static void trace_end(char *name, int depth, int ret)
+{
+	if (ret) trace_begin(name, depth, ret);
+}
+
 int iter_dirs(iter_op op, int depth, int parent)
 {
 	int ret = 0;
@@ -148,12 +169,16 @@ int iter_dirs(iter_op op, int depth, int parent)
 			perror("chdir");
 			goto out;
 		}
+
+		trace_begin(name, depth, 0);
 		if (depth > 0) // BFS
 			ret = iter_dirs(op, depth - 1, id << (dir_id_log16*4));
 		if (depth < 0) // DFS
 			ret = iter_dirs(op, depth + 1, id << (dir_id_log16*4));
+		trace_end(name, depth, ret);
 		if (ret)
 			goto out;
+
 		if (ret = fchdir(fd)) {
 			perror("fchdir");
 			goto out;
@@ -182,7 +207,7 @@ static unsigned int log16(unsigned int x)
 
 int iter_tree(iter_op op, int depth)
 {
-	// Clac number of hexa digits per dir level
+	// Calc number of hexa digits per dir level
 	if (dir_id_log16)
 		dir_id_log16 = log16(max(tree_width + node_count, leaf_count) - 1) + 1;
 
