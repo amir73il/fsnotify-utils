@@ -8,6 +8,7 @@ extern int node_count;
 extern char *file_prefix;
 extern char *dir_prefix;
 extern int data_seed;
+extern int keep_data;
 
 void iter_usage();
 int iter_parseopt(int argc, char *argv[]);

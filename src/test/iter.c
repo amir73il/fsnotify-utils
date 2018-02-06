@@ -23,6 +23,7 @@ int node_count;
 char *file_prefix = "f";
 char *dir_prefix = "d";
 int data_seed = 0;
+int keep_data = 0;
 int trace_depth = 0;
 int dir_id_log16 = 0;
 
@@ -39,15 +40,18 @@ void iter_usage()
 	fprintf(stderr, "-d <dirname prefix>   (default = 'd')\n");
 	fprintf(stderr, "-v <trace depth>      (default = 0, implies -x)\n");
 	fprintf(stderr, "-x <start global id>  (default = 0, id in hexa as printed by -v deepest trace prints)\n");
-	fprintf(stderr, "-s <data type/seed>   (default = 0)\n");
+	fprintf(stderr, "-s <data type/seed> [-k] (default = 0)\n");
 	fprintf(stderr, "data type/seed may be 0 (default) for fallocate, < 0 for sparse file and > 0 for seed of random data\n");
+	fprintf(stderr, "By default, existing file is truncated to zero before its data is allocated and initialized.\n");
+	fprintf(stderr, "With -k option, an existing file is not truncated and allocated blocks are kept in the file.\n");
+	fprintf(stderr, "random data overwrites existing data, but fallocate and ftruncate do not zero out existing data.\n");
 }
 
 int iter_parseopt(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "c:C:w:s:f:d:v:x:")) != -1) {
+	while ((c = getopt(argc, argv, "c:C:w:s:f:d:v:x:k")) != -1) {
 		switch (c) {
 			case 'c':
 				leaf_count = atoi(optarg);
@@ -60,6 +64,9 @@ int iter_parseopt(int argc, char *argv[])
 				break;
 			case 's':
 				data_seed = atoi(optarg);
+				break;
+			case 'k':
+				keep_data = 1;
 				break;
 			case 'f':
 				file_prefix = optarg;

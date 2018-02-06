@@ -41,7 +41,8 @@ static int write_random_block(int fd)
 static int create_file(const char *name)
 {
 	int i, ret = 0;
-	int fd = creat(name, 0644);
+	int flags = O_CREAT|O_WRONLY|(keep_data ? 0 : O_TRUNC);
+	int fd = open(name, flags, 0644);
 
 	if (fd < 0) {
 		perror("create file");
@@ -135,8 +136,8 @@ void main(int argc, char *argv[])
 	if (iter_parseopt(argc, argv) == -1)
 		usage();
 
-	printf("tree_width=%d\nleaf_count=%d\nnode_count=%d\nfile_prefix='%s'\ndir_prefix='%s'\ndata_seed=%d\n",
-		tree_width, leaf_count, node_count, file_prefix, dir_prefix, data_seed);
+	printf("tree_width=%d\nleaf_count=%d\nnode_count=%d\nfile_prefix='%s'\ndir_prefix='%s'\ndata_seed=%d\nkeep_data=%d\n",
+		tree_width, leaf_count, node_count, file_prefix, dir_prefix, data_seed, keep_data);
 
 	if (data_seed > 0) {
 		// mix params with random seed
