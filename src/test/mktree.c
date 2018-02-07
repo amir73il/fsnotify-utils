@@ -21,11 +21,12 @@
 
 static off64_t file_size;
 
-#define MB (1024 * 1024)
+#define KB (1024)
+#define MB (KB * KB)
 
 static uint32_t state[4];
 static char data[MB];
-static off_t block_size = MB;
+static off_t block_size = 1;
 
 static int write_random_block(int fd)
 {
@@ -114,28 +115,43 @@ void main(int argc, char *argv[])
 
 	switch (*size_unit) {
 		case 0:
+			if (file_size > MB) {
+				fprintf(stderr, "illegal file size '%ld'. try specifying size in K or M units\n", file_size);
+				usage();
+			}
+			break;
 		case 'm':
 		case 'M':
+			block_size = MB;
 			break;
 		case 'k':
 		case 'K':
-			block_size = 1024;
+			block_size = KB;
 			break;
 		case 'g':
 		case 'G':
-			file_size *= 1024;
+			block_size = MB;
+			size_unit = "m";
+			file_size *= KB;
 			break;
 		default:
 			fprintf(stderr, "illegal size unit '%s'\n", size_unit);
 			usage();
 	}
 
-	printf("%s %s\ntree_depth=%d\nfile_size=%d(%s)\n",
-		progname, path, tree_depth, (int)file_size, size_unit);
-
 	if (iter_parseopt(argc, argv) == -1)
 		usage();
 
+	if (block_size == 1) {
+		block_size = file_size;
+		file_size = 1;
+		/* random data block size must be 4 bytes aligned */
+		if (data_seed > 0)
+			block_size = (block_size >> 2) << 2;
+	}
+
+	printf("%s %s\ntree_depth=%d\nfile_size=%ld%s\n",
+		progname, path, tree_depth, *size_unit ? file_size : block_size, size_unit);
 	printf("tree_width=%d\nleaf_count=%d\nnode_count=%d\nfile_prefix='%s'\ndir_prefix='%s'\ndata_seed=%d\nkeep_data=%d\n",
 		tree_width, leaf_count, node_count, file_prefix, dir_prefix, data_seed, keep_data);
 
