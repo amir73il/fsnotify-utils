@@ -109,16 +109,30 @@ static xid_t create_name(char *buf, int len, int is_dir, xid_t parent, xid_t i)
 	return id;
 }
 
+static int skip_id(int depth, xid_t id)
+{
+	int tabs = tree_depth - abs(depth);
+
+	if (tabs >= trace_depth)
+		return 0;
+
+	/* Skip only trace leaf id's */
+	return ((id < start_id) && (tabs == (trace_depth - 1)));
+}
+
 static int iter_names(iter_op op, int depth, xid_t parent)
 {
 	int ret;
 	int i, count = depth ? tree_width : leaf_count;
 	char name[NAME_MAX+1];
+	xid_t id;
 
 	name[NAME_MAX] = 0;
 iter_files:
 	for (i = 0; i < count; i++) {
-		create_name(name, NAME_MAX, depth, parent, i);
+		id = create_name(name, NAME_MAX, depth, parent, i);
+		if (skip_id(depth, id))
+			continue;
 		ret = op(name, depth);
 		if (ret && errno != EEXIST && errno != ENOENT) {
 			perror(name);
@@ -142,7 +156,7 @@ iter_files:
 
 static void trace_print(char *name, int depth, int ret)
 {
-	int tabs = tree_depth - depth;
+	int tabs = tree_depth - abs(depth);
 
 	while (tabs--)
 		putchar('\t');
@@ -152,14 +166,14 @@ static void trace_print(char *name, int depth, int ret)
 
 static int trace_begin(char *name, int depth, xid_t id)
 {
-	int tabs = tree_depth - depth;
+	int tabs = tree_depth - abs(depth);
 	int ret = 0;
 
 	if (tabs >= trace_depth)
 		return 0;
 
 	/* Skip only trace leaf id's */
-	if ((id < start_id) && (tabs == (trace_depth - 1)))
+	if (skip_id(depth, id))
 		ret = 1;
 
 	trace_print(name, depth, ret);
