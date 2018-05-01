@@ -27,8 +27,6 @@ int keep_data = 0;
 int trace_depth = 0;
 int dir_id_log16 = 0;
 
-typedef long long int xid_t;
-
 xid_t start_id = 0;
 xid_t end_id = LLONG_MAX;
 
@@ -102,13 +100,12 @@ int iter_parseopt(int argc, char *argv[])
 static xid_t create_name(char *buf, int len, int is_dir, xid_t parent, xid_t i)
 {
 	const char *prefix = is_dir ? dir_prefix : file_prefix;
-	xid_t id;
+	xid_t id = 0;
 
 	if (dir_id_log16) {
 		id = parent + i;
 		snprintf(buf, len, "%s%llx", prefix, id);
 	} else {
-		id = i;
 		snprintf(buf, len, "%s%lld", prefix, i);
 	}
 
@@ -139,7 +136,7 @@ iter_files:
 		id = create_name(name, NAME_MAX, depth, parent, i);
 		if (skip_id(depth, id))
 			continue;
-		ret = op(name, depth);
+		ret = op(name, depth, id);
 		if (ret && errno != EEXIST && errno != ENOENT) {
 			perror(name);
 			return ret;

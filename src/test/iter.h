@@ -13,7 +13,11 @@ extern int keep_data;
 void iter_usage();
 int iter_parseopt(int argc, char *argv[]);
 
-typedef int (*iter_op)(const char *, int);
+typedef long long int xid_t;
+
+#define XATTR_XID "user.iter.xid"
+
+typedef int (*iter_op)(const char *, int, xid_t);
 
 int iter_tree(iter_op op, int depth);
 #endif

@@ -15,6 +15,7 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
+#include <attr/xattr.h>
 #include "iter.h"
 #include "xorshift.h"
 
@@ -39,7 +40,7 @@ static int write_random_block(int fd)
 	return write(fd, data, block_size);
 }
 
-static int create_file(const char *name)
+static int create_file(const char *name, xid_t id)
 {
 	int i, ret = 0;
 	int flags = O_CREAT|O_WRONLY|(keep_data ? 0 : O_TRUNC);
@@ -68,24 +69,29 @@ static int create_file(const char *name)
 		}
 		ret = 0;
 	}
+	if (id) {
+		ret = fsetxattr(fd, XATTR_XID, &id, sizeof(id), 0);
+		if (ret)
+			perror("fsetxattr");
+	}
 out:
 	close(fd);
 	return ret;
 }
 
-static int do_mk(const char *name, int depth)
+static int do_mk(const char *name, int depth, xid_t id)
 {
-	return depth ? mkdir(name, 0751) : create_file(name);
+	return depth ? mkdir(name, 0751) : create_file(name, id);
 }
 
-static int do_rm(const char *name, int depth)
+static int do_rm(const char *name, int depth, xid_t id)
 {
 	return depth ? rmdir(name) : unlink(name);
 }
 
-static int do_create(const char *name, int depth)
+static int do_create(const char *name, int depth, xid_t id)
 {
-	return do_mk(name, depth);
+	return do_mk(name, depth, id);
 }
 
 static const char *progname;
