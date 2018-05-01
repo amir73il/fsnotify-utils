@@ -31,7 +31,7 @@ static int fanotify_fd = -1;
 
 #define EVENT_MASK (FAN_OPEN_PERM | FAN_OPEN | FAN_CLOSE | FAN_ONDIR)
 
-static int do_add_mark(const char *name, int depth)
+static int do_add_mark(const char *name, int depth, xid_t id)
 {
 	if (!depth)
 		return 0;
