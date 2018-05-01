@@ -52,8 +52,12 @@ static int create_file(const char *name)
 
 	if (!file_size || data_seed < 0) {
 		ret = ftruncate64(fd, file_size * block_size);
+		if (ret)
+			perror("ftruncate64");
 	} else if (data_seed == 0) {
 		ret = fallocate64(fd, 0, 0, file_size * block_size);
+		if (ret)
+			perror("fallocate64");
 	} else {
 		for (i = 0; i < file_size; i++) {
 			ret = write_random_block(fd);
@@ -142,7 +146,7 @@ void main(int argc, char *argv[])
 	if (iter_parseopt(argc, argv) == -1)
 		usage();
 
-	if (block_size == 1) {
+	if (file_size && block_size == 1) {
 		block_size = file_size;
 		file_size = 1;
 		/* random data block size must be 4 bytes aligned */
