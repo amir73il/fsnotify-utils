@@ -25,7 +25,9 @@ char *dir_prefix = "d";
 int data_seed = 0;
 int keep_data = 0;
 int trace_depth = 0;
-int dir_id_log16 = 0;
+int xid = 0;
+int node_id_log16;
+int leaf_id_log16;
 
 xid_t start_id = 0;
 xid_t end_id = LLONG_MAX;
@@ -77,15 +79,15 @@ int iter_parseopt(int argc, char *argv[])
 			case 'v':
 				trace_depth = atoi(optarg);
 				/* Implies -x so created dir name is a progress indicator */
-				dir_id_log16 = 1;
+				xid = 1;
 				break;
 			case 'x':
 				start_id = strtoll(optarg, NULL, 16);
-				dir_id_log16 = 1;
+				xid = 1;
 				break;
 			case 'X':
 				end_id = strtoll(optarg, NULL, 16);
-				dir_id_log16 = 1;
+				xid = 1;
 				break;
 			default:
 				fprintf(stderr, "illegal option '%s'\n", argv[optind]);
@@ -102,7 +104,7 @@ static xid_t create_name(char *buf, int len, int is_dir, xid_t parent, xid_t i)
 	const char *prefix = is_dir ? dir_prefix : file_prefix;
 	xid_t id = 0;
 
-	if (dir_id_log16) {
+	if (xid) {
 		id = parent + i;
 		snprintf(buf, len, "%s%llx", prefix, id);
 	} else {
@@ -194,6 +196,8 @@ int iter_dirs(iter_op op, int depth, xid_t parent)
 	int fd = open(".", O_PATH);
 	int i, count = tree_width;
 	char name[NAME_MAX+1];
+	int next_depth = depth > 0 ? depth - 1 : depth + 1;
+	int next_id_log16 = next_depth ? node_id_log16 : leaf_id_log16;
 	xid_t id;
 
 	name[NAME_MAX] = 0;
@@ -217,10 +221,8 @@ int iter_dirs(iter_op op, int depth, xid_t parent)
 		}
 
 		ret = trace_begin(name, depth, id);
-		if (!ret && depth > 0) // BFS
-			ret = iter_dirs(op, depth - 1, id << (dir_id_log16*4));
-		if (!ret && depth < 0) // DFS
-			ret = iter_dirs(op, depth + 1, id << (dir_id_log16*4));
+		if (!ret)
+			ret = iter_dirs(op, next_depth, id << (next_id_log16*4));
 		trace_end(name, depth, ret);
 		if (ret < 0)
 			goto out;
@@ -240,7 +242,6 @@ out:
 	return ret;
 }
 
-
 static unsigned int log16(unsigned int x)
 {
 	unsigned int ans = 0;
@@ -249,13 +250,13 @@ static unsigned int log16(unsigned int x)
 	return ans;
 }
 
-#define max(x, y) ((x) > (y) ? (x) : (y))
-
 int iter_tree(iter_op op, int depth)
 {
-	// Calc number of hexa digits per dir level
-	if (dir_id_log16)
-		dir_id_log16 = log16(max(tree_width + node_count, leaf_count) - 1) + 1;
+	// Calc number of hexa digits per tree level
+	if (xid) {
+		node_id_log16 = log16(tree_width + node_count - 1) + 1;
+		leaf_id_log16 = log16(leaf_count - 1) + 1;
+	}
 
 	return iter_dirs(op, depth, 1);
 }
