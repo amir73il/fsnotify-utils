@@ -84,7 +84,7 @@ static int do_mk(const char *name, int depth, xid_t id)
 	return depth ? mkdir(name, 0751) : create_file(name, id);
 }
 
-static int do_rm(const char *name, int depth, xid_t id)
+static int do_rm(const char *name, int depth, xid_t __attribute__((__unused__)) id)
 {
 	return depth ? rmdir(name) : unlink(name);
 }
