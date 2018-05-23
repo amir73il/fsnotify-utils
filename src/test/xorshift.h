@@ -32,12 +32,12 @@ static inline uint64_t xorshift64star(uint64_t state[static 1])
 	return x * 0x2545F4914F6CDD1D;
 }
 
-static inline unsigned long strhash(unsigned char *str)
+static inline unsigned long strhash(char *str)
 {
     unsigned long hash = 5381;
     int c;
 
-    while (c = *str++)
+    while ((c = *str++))
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
 
     return hash;

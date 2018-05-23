@@ -105,7 +105,7 @@ void usage()
 	exit(1);
 }
 
-void main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	char *path = argv[1];
 	char *size_unit;
@@ -183,4 +183,6 @@ void main(int argc, char *argv[])
 		iter_tree(do_create, tree_depth);
 	else if (strcmp(progname, "rmtree") == 0)
 		iter_tree(do_rm, -tree_depth);
+
+	return 0;
 }

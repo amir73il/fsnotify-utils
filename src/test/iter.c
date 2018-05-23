@@ -215,7 +215,8 @@ int iter_dirs(iter_op op, int depth, xid_t parent)
 
 	for (i = 0; i < count; i++) {
 		id = create_name(name, NAME_MAX, 1, parent, i);
-		if (ret = chdir(name) && errno != ENOENT) {
+		ret = chdir(name);
+		if (ret && errno != ENOENT) {
 			perror("chdir");
 			goto out;
 		}
@@ -227,7 +228,8 @@ int iter_dirs(iter_op op, int depth, xid_t parent)
 		if (ret < 0)
 			goto out;
 
-		if (ret = fchdir(fd)) {
+		ret = fchdir(fd);
+		if (ret) {
 			perror("fchdir");
 			goto out;
 		}
