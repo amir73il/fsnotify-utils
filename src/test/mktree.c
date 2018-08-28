@@ -29,6 +29,88 @@ static uint32_t state[4];
 static char data[MB];
 static off_t block_size = 1;
 
+struct xattr_t {
+	const char *name;
+	char *val;
+	size_t len;
+};
+
+static struct xattr_t xattrs[] = {
+	{ "system.posix_acl_access" },
+	{ "system.posix_acl_default" },
+	{ "security.NTACL" },
+	{ "user.SAMBA_PAI" },
+	{ NULL, NULL, 0 }
+};
+
+static int read_acls(const char *name)
+{
+	struct xattr_t *xattr;
+	ssize_t res;
+	int ret = 0;
+	int fd;
+
+	fd = open(name, O_RDONLY);
+	if (fd < 0) {
+		perror("open file");
+		return fd;
+	}
+
+	for (xattr = xattrs; xattr->name; xattr++) {
+		if (xattr->val) {
+			free(xattr->val);
+			xattr->val = NULL;
+		}
+		res = fgetxattr(fd, xattr->name, NULL, 0);
+		if (res < 0 && errno != ENODATA) {
+			perror("get xattr len");
+			goto out;
+		}
+		if (res <= 0)
+			continue;
+
+		xattr->val = malloc(res);
+		if (!xattr->val) {
+			perror("alloc xattr");
+			goto out;
+		}
+		res = fgetxattr(fd, xattr->name, xattr->val, res);
+		if (res <= 0) {
+			perror(xattr->name);
+			goto out;
+		}
+		xattr->len = ret = res;
+	}
+out:
+	close(fd);
+	return ret;
+}
+
+static int write_xattrs(int fd, xid_t id)
+{
+	struct xattr_t *xattr;
+	int ret;
+
+	if (id) {
+		ret = fsetxattr(fd, XATTR_XID, &id, sizeof(id), 0);
+		if (ret) {
+			perror("fsetxattr xid");
+			return ret;
+		}
+	}
+	for (xattr = xattrs; copy_root_acls && xattr->name; xattr++) {
+		if (!xattr->val)
+			continue;
+		ret = fsetxattr(fd, xattr->name, xattr->val, xattr->len, 0);
+		if (ret) {
+			perror(xattr->name);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
 static int write_random_block(int fd)
 {
 	int i;
@@ -69,19 +151,30 @@ static int create_file(const char *name, xid_t id)
 		}
 		ret = 0;
 	}
-	if (id) {
-		ret = fsetxattr(fd, XATTR_XID, &id, sizeof(id), 0);
-		if (ret)
-			perror("fsetxattr");
-	}
+	if (ret >= 0)
+		ret = write_xattrs(fd, id);
 out:
 	close(fd);
 	return ret;
 }
 
-static int do_mk(const char *name, int depth, xid_t id)
+static int create_dir(const char *name, xid_t id)
 {
-	return depth ? mkdir(name, 0751) : create_file(name, id);
+	int fd;
+	int ret = mkdir(name, 0751);
+
+	if (ret < 0 && errno != EEXIST)
+		return ret;
+
+	fd = open(name, O_RDONLY);
+	if (fd < 0) {
+		perror("open dir");
+		return fd;
+	}
+
+	ret = write_xattrs(fd, id);
+	close(fd);
+	return ret;
 }
 
 static int do_rm(const char *name, int depth, xid_t __attribute__((__unused__)) id)
@@ -91,7 +184,7 @@ static int do_rm(const char *name, int depth, xid_t __attribute__((__unused__)) 
 
 static int do_create(const char *name, int depth, xid_t id)
 {
-	return do_mk(name, depth, id);
+	return depth ? create_dir(name, id) : create_file(name, id);
 }
 
 static const char *progname;
@@ -160,10 +253,21 @@ int main(int argc, char *argv[])
 			block_size = (block_size >> 2) << 2;
 	}
 
+	if (copy_root_acls) {
+		if (read_acls(".") <= 0) {
+			fprintf(stderr, "failed to read ACLs from '%s' - ignoring -A flag.\n", path);
+			copy_root_acls = 0;
+		}
+	}
+
 	printf("%s %s\ntree_depth=%d\nfile_size=%ld%s\n",
 		progname, path, tree_depth, *size_unit ? file_size : block_size, size_unit);
-	printf("tree_width=%d\nleaf_count=%d\nnode_count=%d\nfile_prefix='%s'\ndir_prefix='%s'\ndata_seed=%d\nkeep_data=%d\n",
-		tree_width, leaf_count, node_count, file_prefix, dir_prefix, data_seed, keep_data);
+	printf("tree_width=%d\nleaf_count=%d\nnode_count=%d\n"
+		"file_prefix='%s'\ndir_prefix='%s'\n"
+		"data_seed=%d\nkeep_data=%d\ncopy_root_acls=%d\n",
+		tree_width, leaf_count, node_count,
+		file_prefix, dir_prefix,
+		data_seed, keep_data, copy_root_acls);
 
 	if (data_seed > 0) {
 		// mix params with random seed
