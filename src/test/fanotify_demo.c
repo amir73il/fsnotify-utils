@@ -34,6 +34,7 @@
 #define FAN_EVENT_ON_SB         0x01000000
 #define FAN_EVENT_ON_DESCENDANT (FAN_EVENT_ON_CHILD | FAN_EVENT_ON_SB)
 
+#define FAN_UNPRIVILEGED        0x080
 #define FAN_EVENT_INFO_PARENT   0x100
 #define FAN_EVENT_INFO_NAME     0x200
 #define FAN_EVENT_INFO_FH       0x400
@@ -65,6 +66,7 @@ displayNotifyEvent(struct fanotify_event_metadata *i)
     unsigned *fid = (unsigned *)fh->f_handle;
 
     printf("    fd =%d; ", i->fd);
+    printf("    pid =%d; ", i->pid);
     printf("mask = ");
     if (i->mask & IN_ACCESS)        printf("FAN_ACCESS ");
     if (i->mask & IN_ATTRIB)        printf("FAN_ATTRIB ");
@@ -141,13 +143,12 @@ static int add_watch(int notifyFd, const char *path)
 				AT_FDCWD, path);
 	if (wd == -1) {
 		fprintf(stderr, "fanotify sb watch not supported\n");
+		wd = fanotify_mark(notifyFd, FAN_MARK_ADD|FAN_MARK_MOUNT,
+				FAN_ALL_EVENTS,
+				AT_FDCWD, path);
 		wd = fanotify_mark(notifyFd, FAN_MARK_ADD,
 				FAN_ALL_EVENTS|FAN_EVENT_ON_CHILD,
 				AT_FDCWD, path);
-		if (!wd)
-			wd = fanotify_mark(notifyFd, FAN_MARK_ADD|FAN_MARK_MOUNT,
-					FAN_ALL_EVENTS,
-					AT_FDCWD, path);
 	}
 	if (wd == -1) {
 		int err = errno;
@@ -178,6 +179,10 @@ main(int argc, char *argv[])
     if (notifyFd == -1) {
 	fprintf(stderr, "fanotify filename events not supported\n");
 	notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF, O_RDONLY);
+    }
+    if (notifyFd == -1) {
+	fprintf(stderr, "trying unprivileged fanotify\n");
+	notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF | FAN_UNPRIVILEGED, O_RDONLY);
     }
     if (notifyFd == -1) {
 	    errExit("fanotify_init");
