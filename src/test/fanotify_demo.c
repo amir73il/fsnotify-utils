@@ -31,8 +31,8 @@
 #endif
 
 #define FAN_RENAME		0x10000000
-#define FAN_EVENT_ON_SB         0x01000000
-#define FAN_EVENT_ON_DESCENDANT (FAN_EVENT_ON_CHILD | FAN_EVENT_ON_SB)
+
+#define FAN_MARK_FILESYSTEM     0x00000100
 
 #define FAN_UNPRIVILEGED        0x080
 #define FAN_EVENT_INFO_PARENT   0x100
@@ -40,7 +40,7 @@
 #define FAN_EVENT_INFO_FH       0x400
 
 #define FAN_DENTRY_EVENTS (IN_ATTRIB |\
-		IN_MOVE | IN_MOVE_SELF | FAN_RENAME |\
+		IN_MOVE | IN_MOVE_SELF |\
 		IN_CREATE | IN_DELETE)
 
 /*
@@ -137,9 +137,9 @@ static int add_watch(int notifyFd, const char *path)
 	 * - notification events after closing a write-enabled
 	 * file descriptor
 	 */
-	wd = fanotify_mark(notifyFd, FAN_MARK_ADD,
+	wd = fanotify_mark(notifyFd, FAN_MARK_ADD|FAN_MARK_FILESYSTEM,
 				FAN_ALL_EVENTS|FAN_DENTRY_EVENTS|
-				FAN_EVENT_ON_DESCENDANT|FAN_ONDIR,
+				FAN_EVENT_ON_CHILD|FAN_ONDIR,
 				AT_FDCWD, path);
 	if (wd == -1) {
 		fprintf(stderr, "fanotify sb watch not supported\n");
@@ -177,7 +177,7 @@ main(int argc, char *argv[])
 				FAN_EVENT_INFO_PARENT | FAN_EVENT_INFO_NAME| FAN_EVENT_INFO_FH,
 				O_RDONLY);
     if (notifyFd == -1) {
-	fprintf(stderr, "fanotify filename events not supported\n");
+	fprintf(stderr, "fanotify file handle event info not supported\n");
 	notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF, O_RDONLY);
     }
     if (notifyFd == -1) {
