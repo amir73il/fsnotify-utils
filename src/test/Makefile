@@ -1,4 +1,4 @@
-PROGS= fanotify_demo inotify_demo fanotify_bug
+PROGS= fanotify_demo inotify_demo fanotify_bug dnotify
 PROGS+= sbwatch watchdirs mktree rmtree ioloop
 
 TLPI=../lib/error_functions.c
@@ -20,6 +20,8 @@ install:
 fanotify_demo: fanotify_demo.c $(TLPI)
 
 inotify_demo: inotify_demo.c $(TLPI)
+
+dnotify: dnotify.c $(TLPI)
 
 rmtree: mktree
 	ln -s mktree rmtree
