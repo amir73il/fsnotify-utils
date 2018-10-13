@@ -1,0 +1,19 @@
+progname=`basename $0`
+
+usage() {
+	echo "usgae: $progname <branches file>"
+	echo "   or: BRANCHES=<branches> rebase"
+	exit 1
+}
+
+branches=${1-branches}
+[ ! -f "$branches" ] || . $branches || usage
+[ -n "$BRANCHES" ] || usage
+
+for b in ${BRANCHES[*]};
+do
+	echo git push $b...
+	[ "`git rev-parse $b`" = "`git rev-parse github/$b`" ] || \
+		git pf github $b
+done
+git lg ${BRANCHES[0]}..

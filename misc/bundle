@@ -1,0 +1,21 @@
+progname=`basename $0`
+
+usage() {
+	echo "usgae: $progname [<branches file>]"
+	echo "   or: BRANCHES=<branches> rebase"
+	exit 1
+}
+
+branches=${1-branches}
+[ ! -f "$branches" ] || . $branches || usage
+[ -n "$BRANCHES" ] || usage
+
+for b in ${BRANCHES[*]};
+do
+	if [ -n "$base" ]; then
+		echo git bundle $b...
+		git bundle create $b.bundle $base..$b || exit 1
+	fi
+	base=$b
+done
+git lg ${BRANCHES[0]}..
