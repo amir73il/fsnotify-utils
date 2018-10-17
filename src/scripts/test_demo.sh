@@ -25,6 +25,7 @@ touch a/1 a/2 a/3
 mknod a/0 c 0 0
 chmod +x a/0
 mkdir a/dir0 a/dir1 a/dir2
+ls -li a/
 $SLEEP
 mv a/0 a/3
 mv a/dir0 a/dir3
@@ -34,6 +35,7 @@ rmdir a/dir1 a/dir2 a/dir3
 sleep 1
 touch a/b/c/d/e/f/g/0
 chmod +x a/b/c/d/e/f/g/0
+ls -li a/b/c/d/e/f/g/
 $SLEEP
 mv a/b/c/d/e/f/g/0 a/b/c/d/e/f/1
 rm a/b/c/d/e/f/1

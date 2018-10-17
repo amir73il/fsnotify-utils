@@ -32,12 +32,13 @@
 
 #define FAN_RENAME		0x10000000
 
+#ifndef FAN_MARK_FILESYSTEM
 #define FAN_MARK_FILESYSTEM     0x00000100
+#endif
 
-#define FAN_UNPRIVILEGED        0x080
-#define FAN_EVENT_INFO_PARENT   0x100
-#define FAN_EVENT_INFO_NAME     0x200
-#define FAN_EVENT_INFO_FH       0x400
+#ifndef FAN_REPORT_FID
+#define FAN_REPORT_FID		0x200
+#endif
 
 #define FAN_DENTRY_EVENTS (IN_ATTRIB |\
 		IN_MOVE | IN_MOVE_SELF |\
@@ -55,18 +56,18 @@ struct fanotify_event_metadata {
 	__s32 pid;
 };
 */
-static void             
-displayNotifyEvent(struct fanotify_event_metadata *i)
+static void displayNotifyEvent(struct fanotify_event_metadata *i)
 {
     char procfile[256];
     char path[256];
     char filename[256];
     ssize_t len = 0;
-    struct file_handle *fh = (struct file_handle *)(i+1);
+    int *fsid = (int *)(i + 1);
+    struct file_handle *fh = (struct file_handle *)(fsid + 3);
     unsigned *fid = (unsigned *)fh->f_handle;
 
-    printf("    fd =%d; ", i->fd);
-    printf("    pid =%d; ", i->pid);
+    printf("    fd = %d; ", i->fd);
+    printf("    pid = %d; ", i->pid);
     printf("mask = ");
     if (i->mask & IN_ACCESS)        printf("FAN_ACCESS ");
     if (i->mask & IN_ATTRIB)        printf("FAN_ATTRIB ");
@@ -102,22 +103,23 @@ displayNotifyEvent(struct fanotify_event_metadata *i)
     if (i->event_len <= FAN_EVENT_METADATA_LEN)
 	    return;
 
-    printf("    type =0x%x; ", fh->handle_type);
-    printf("    bytes =0x%x; ", fh->handle_bytes);
+    printf("    fsid = %8x%8x; ", fsid[1], fsid[2]);
+    printf("    type = 0x%x; ", fh->handle_type);
+    printf("    bytes = %d; ", fh->handle_bytes);
     switch (fh->handle_type) {
 	    case FILEID_INO32_GEN_PARENT:
-		    printf("    parent ino =%u; ", fid[2]);
-		    printf("    parent gen =%u; ", fid[3]);
+		    printf("    parent ino = %u; ", fid[2]);
+		    printf("    parent gen = %u; ", fid[3]);
 	    case FILEID_INO32_GEN:
-		    printf("    ino =%u; ", fid[0]);
-		    printf("    gen =%u; ", fid[1]);
+		    printf("    ino = %u; ", fid[0]);
+		    printf("    gen = %u; ", fid[1]);
 		    break;
 	    case FILEID_INO64_GEN_PARENT:
-		    printf("    parent ino =%llu; ", *(unsigned long long *)(fid+3));
-		    printf("    parent gen =%u; ", fid[5]);
+		    printf("    parent ino = %llu; ", *(unsigned long long *)(fid+3));
+		    printf("    parent gen = %u; ", fid[5]);
 	    case FILEID_INO64_GEN:
-		    printf("    ino =%llu; ", *(unsigned long long *)fid);
-		    printf("    gen =%u; ", fid[2]);
+		    printf("    ino = %llu; ", *(unsigned long long *)fid);
+		    printf("    gen = %u; ", fid[2]);
 		    break;
     }
 
@@ -173,16 +175,10 @@ main(int argc, char *argv[])
     if (argc < 2 || strcmp(argv[1], "--help") == 0)
         usageErr("%s pathname...\n", argv[0]);
 
-    notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF |
-				FAN_EVENT_INFO_PARENT | FAN_EVENT_INFO_NAME| FAN_EVENT_INFO_FH,
-				O_RDONLY);
+    notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF | FAN_REPORT_FID, 0);
     if (notifyFd == -1) {
 	fprintf(stderr, "fanotify file handle event info not supported\n");
 	notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF, O_RDONLY);
-    }
-    if (notifyFd == -1) {
-	fprintf(stderr, "trying unprivileged fanotify\n");
-	notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF | FAN_UNPRIVILEGED, O_RDONLY);
     }
     if (notifyFd == -1) {
 	    errExit("fanotify_init");
