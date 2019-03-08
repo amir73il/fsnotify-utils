@@ -37,8 +37,15 @@
 #endif
 
 #ifndef FAN_REPORT_FID
-#define FAN_REPORT_FID		0x200
+#define FAN_REPORT_FID		0x00000200
 #endif
+#ifndef FAN_REPORT_FILENAME
+#define FAN_REPORT_FILENAME     0x00000400
+#endif
+#ifndef FAN_REPORT_COOKIE
+#define FAN_REPORT_COOKIE       0x00000800
+#endif
+
 
 #define FAN_DENTRY_EVENTS (IN_ATTRIB |\
 		IN_MOVE | IN_MOVE_SELF |\
@@ -123,7 +130,7 @@ static void displayNotifyEvent(struct fanotify_event_metadata *i)
 		    break;
     }
 
-    if (i->event_len > FAN_EVENT_METADATA_LEN + sizeof(*fh) + fh->handle_bytes)
+    if (i->event_len > FAN_EVENT_METADATA_LEN + 3*sizeof(int) + sizeof(*fh) + fh->handle_bytes)
 	    printf("        name = %s\n", fh->f_handle + fh->handle_bytes);
     else
 	    printf("\n");
@@ -175,7 +182,8 @@ main(int argc, char *argv[])
     if (argc < 2 || strcmp(argv[1], "--help") == 0)
         usageErr("%s pathname...\n", argv[0]);
 
-    notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF | FAN_REPORT_FID, 0);
+    notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF |
+		    FAN_REPORT_FID | FAN_REPORT_FILENAME | FAN_REPORT_COOKIE, 0);
     if (notifyFd == -1) {
 	fprintf(stderr, "fanotify file handle event info not supported\n");
 	notifyFd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_NOTIF, O_RDONLY);
