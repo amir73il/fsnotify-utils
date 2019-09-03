@@ -25,6 +25,7 @@ char *dir_prefix = "d";
 int data_seed = 0;
 int keep_data = 0;
 int copy_root_acls = 0;
+int copy_root_mtime = 0;
 int trace_depth = 0;
 int xid = 0;
 int node_id_log16;
@@ -48,17 +49,22 @@ void iter_usage()
 	fprintf(stderr, "By default, existing file is truncated to zero before its data is allocated and initialized.\n");
 	fprintf(stderr, "With -k option, an existing file is not truncated and allocated blocks are kept in the file.\n");
 	fprintf(stderr, "random data overwrites existing data, but fallocate and ftruncate do not zero out existing data.\n");
-	fprintf(stderr, "-A copy ACLs from dirtree root\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "-A copy ACLs from dirtree root to files and dirs\n");
+	fprintf(stderr, "-M copy mtime from dirtree root to files mtime/atime\n");
 }
 
 int iter_parseopt(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "Ac:C:w:s:f:d:v:x:X:k")) != -1) {
+	while ((c = getopt(argc, argv, "AMc:C:w:s:f:d:v:x:X:k")) != -1) {
 		switch (c) {
 			case 'A':
 				copy_root_acls = 1;
+				break;
+			case 'M':
+				copy_root_mtime = 1;
 				break;
 			case 'c':
 				leaf_count = atoi(optarg);

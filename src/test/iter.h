@@ -10,6 +10,7 @@ extern char *dir_prefix;
 extern int data_seed;
 extern int keep_data;
 extern int copy_root_acls;
+extern int copy_root_mtime;
 
 void iter_usage();
 int iter_parseopt(int argc, char *argv[]);

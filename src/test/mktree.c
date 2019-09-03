@@ -43,6 +43,8 @@ static struct xattr_t xattrs[] = {
 	{ NULL, NULL, 0 }
 };
 
+static struct timespec times[2];
+
 static int read_acls(const char *name)
 {
 	struct xattr_t *xattr;
@@ -121,6 +123,15 @@ static int write_random_block(int fd)
 	return write(fd, data, block_size);
 }
 
+static int set_times(int fd)
+{
+	if (copy_root_mtime && futimens(fd, times) < 0) {
+		perror("set mtime");
+		return -1;
+	}
+	return 0;
+}
+
 static int create_file(const char *name, xid_t id)
 {
 	int i, ret = 0;
@@ -152,6 +163,8 @@ static int create_file(const char *name, xid_t id)
 	}
 	if (ret >= 0)
 		ret = write_xattrs(fd, id);
+	if (ret >= 0)
+		ret = set_times(fd);
 out:
 	close(fd);
 	return ret;
@@ -259,14 +272,25 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (copy_root_mtime) {
+		struct stat stbuf;
+		if (stat(".", &stbuf) < 0) {
+			fprintf(stderr, "failed to read mtime from '%s' - ignoring -M flag.\n", path);
+			copy_root_mtime = 0;
+		}
+		/* Will set files mtime/atime to root dir mtime */
+		times[0] = times[1] = stbuf.st_mtim;
+	}
+
 	printf("%s %s\ntree_depth=%d\nfile_size=%ld%s\n",
 		progname, path, tree_depth, *size_unit ? file_size : block_size, size_unit);
 	printf("tree_width=%d\nleaf_count=%d\nnode_count=%d\n"
 		"file_prefix='%s'\ndir_prefix='%s'\n"
-		"data_seed=%d\nkeep_data=%d\ncopy_root_acls=%d\n",
+		"data_seed=%d\nkeep_data=%d\n"
+		"copy_root_acls=%d,copy_root_mtime=%d\n",
 		tree_width, leaf_count, node_count,
 		file_prefix, dir_prefix,
-		data_seed, keep_data, copy_root_acls);
+		data_seed, keep_data, copy_root_acls, copy_root_mtime);
 
 	if (data_seed > 0) {
 		// mix params with random seed
