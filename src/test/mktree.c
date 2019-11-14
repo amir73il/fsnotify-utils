@@ -62,10 +62,8 @@ static int read_acls(const char *name)
 			xattr->val = NULL;
 		}
 		res = fgetxattr(fd, xattr->name, NULL, 0);
-		if (res < 0 && errno != ENODATA) {
-			perror("get xattr len");
-			goto out;
-		}
+		if (res < 0 && errno != ENODATA)
+			perror(xattr->name);
 		if (res <= 0)
 			continue;
 
@@ -79,7 +77,8 @@ static int read_acls(const char *name)
 			perror(xattr->name);
 			goto out;
 		}
-		xattr->len = ret = res;
+		xattr->len = res;
+		ret++;
 	}
 out:
 	close(fd);
