@@ -21,6 +21,7 @@
 
 
 static off64_t file_size;
+int file_blocks;
 
 #define KB (1024)
 #define MB (KB * KB)
@@ -214,6 +215,7 @@ int main(int argc, char *argv[])
 {
 	char *path = argv[1];
 	char *size_unit;
+	int ret;
 
 	progname = basename(argv[0]);
 	if (argc < 4)
@@ -227,6 +229,7 @@ int main(int argc, char *argv[])
 	}
 
 	file_size = strtol(argv[3], &size_unit, 10);
+	file_blocks = file_size ? 1 : 0;
 
 	switch (*size_unit) {
 		case 0:
@@ -238,6 +241,7 @@ int main(int argc, char *argv[])
 		case 'm':
 		case 'M':
 			block_size = MB;
+			file_blocks = file_size * BLOCKS_PER_MB;
 			break;
 		case 'k':
 		case 'K':
@@ -248,6 +252,7 @@ int main(int argc, char *argv[])
 			block_size = MB;
 			size_unit = "m";
 			file_size *= KB;
+			file_blocks = file_size * BLOCKS_PER_MB;
 			break;
 		default:
 			fprintf(stderr, "illegal size unit '%s'\n", size_unit);
@@ -314,10 +319,10 @@ int main(int argc, char *argv[])
 	printf("keep_data=%d\ncopy_root_acls=%d\ncopy_root_mtime=%d\n",
 		keep_data, copy_root_acls, copy_root_mtime);
 
-	if (strcmp(progname, "mktree") == 0)
-		iter_tree(do_create, tree_depth);
-	else if (strcmp(progname, "rmtree") == 0)
-		iter_tree(do_rm, -tree_depth);
+	if (strcmp(progname, "rmtree") == 0)
+		ret = iter_tree(do_rm, -tree_depth);
+	else
+		ret = iter_tree(do_create, tree_depth);
 
-	return 0;
+	return ret ? EXIT_FAILURE : EXIT_SUCCESS;
 }
