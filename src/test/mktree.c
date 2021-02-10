@@ -282,15 +282,14 @@ int main(int argc, char *argv[])
 		times[0] = times[1] = stbuf.st_mtim;
 	}
 
-	printf("%s %s\ntree_depth=%d\nfile_size=%ld%s\n",
-		progname, path, tree_depth, *size_unit ? file_size : block_size, size_unit);
-	printf("tree_width=%d\nleaf_count=%d\nnode_count=%d\n"
-		"file_prefix='%s'\ndir_prefix='%s'\n"
-		"data_seed=%d\nkeep_data=%d\n"
-		"copy_root_acls=%d,copy_root_mtime=%d\n",
-		tree_width, leaf_count, node_count,
-		file_prefix, dir_prefix,
-		data_seed, keep_data, copy_root_acls, copy_root_mtime);
+	printf("%s %s\n", progname, path);
+	// Print parameters that are mixed into random seed
+	printf("tree_depth=%d\nfile_size=%ld%s\n"
+		"tree_width=%d\nleaf_start=%d\nleaf_count=%d\nnode_count=%d\n"
+		"file_prefix='%s'\ndir_prefix='%s'\ndata_seed=%d\n",
+		tree_depth, *size_unit ? file_size : block_size, size_unit,
+		tree_width, leaf_start, leaf_count, node_count,
+		file_prefix, dir_prefix, data_seed);
 
 	if (data_seed > 0) {
 		// mix params with random seed
@@ -303,8 +302,17 @@ int main(int argc, char *argv[])
 		mixseed(state, strhash(file_prefix));
 		mixseed(state, strhash(dir_prefix));
 		mixseed(state, data_seed);
+		// For compatibility with deterministic data set created
+		// before adding this parameter, do not mix the default 0
+		// value into the random seed
+		if (leaf_start)
+			mixseed(state, leaf_start);
 		printf("mixed_seed=%u\n", state[0]);
 	}
+
+	// Print parameters that are not mixed into random seed
+	printf("keep_data=%d\ncopy_root_acls=%d\ncopy_root_mtime=%d\n",
+		keep_data, copy_root_acls, copy_root_mtime);
 
 	if (strcmp(progname, "mktree") == 0)
 		iter_tree(do_create, tree_depth);

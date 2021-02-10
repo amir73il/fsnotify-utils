@@ -3,6 +3,7 @@
 
 extern int tree_depth;
 extern int tree_width;
+extern int leaf_start;
 extern int leaf_count;
 extern int node_count;
 extern char *file_prefix;

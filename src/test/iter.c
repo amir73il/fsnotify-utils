@@ -18,6 +18,7 @@
 
 int tree_depth;
 int tree_width = 32;
+int leaf_start = 0;
 int leaf_count = 32;
 int node_count;
 char *file_prefix = "f";
@@ -38,7 +39,7 @@ void iter_usage()
 {
 	fprintf(stderr, "-w <dirtree width>    (default = 32)\n");
 	fprintf(stderr, "-c <leaf files count> (default = 32)\n");
-	fprintf(stderr, "-C <node files count> (default = 0)\n");
+	fprintf(stderr, "-C <node files count> (default = 0, < 0 for leaf files start offset)\n");
 	fprintf(stderr, "-f <filename prefix>  (default = 'f')\n");
 	fprintf(stderr, "-d <dirname prefix>   (default = 'd')\n");
 	fprintf(stderr, "-v <trace depth>      (default = 0, implies -x)\n");
@@ -71,6 +72,11 @@ int iter_parseopt(int argc, char *argv[])
 				break;
 			case 'C':
 				node_count = atoi(optarg);
+				if (node_count < 0) {
+					/* Negative node count is used to skip files in leaf */
+					leaf_start = -node_count;
+					node_count = 0;
+				}
 				break;
 			case 'w':
 				tree_width = atoi(optarg);
@@ -139,13 +145,14 @@ static int skip_id(int depth, xid_t id)
 static int iter_names(iter_op op, int depth, xid_t parent)
 {
 	int ret;
-	int i, count = depth ? tree_width : leaf_count;
+	int i, start = depth ? 0 : leaf_start;
+	int count = depth ? tree_width : leaf_count;
 	char name[NAME_MAX+1];
 	xid_t id;
 
 	name[NAME_MAX] = 0;
 iter_files:
-	for (i = 0; i < count; i++) {
+	for (i = start; i < count; i++) {
 		id = create_name(name, NAME_MAX, depth, parent, i);
 		if (skip_id(depth, id))
 			continue;
