@@ -1,44 +1,45 @@
 #!/bin/sh -x
 
-WD=$1
-
-if test -z "$WD"; then
-	WD=a
-fi
-
-#SLEEP='sleep 1'
+WD=${1:-"."}
+cd $WD
 
 #echo "file fs/notify/fanotify/*  +p" > /sys/kernel/debug/dynamic_debug/control
 rm -rf a
 mkdir -p a/b/c/d/e/f/g/
-mkdir -p /tmp/g
-mount -o bind a/b/c/d/e/f/g /tmp/g
-#echo 3 > /proc/sys/vm/drop_caches
-#./inotify_demo $WD &
-./fanotify_demo $WD &
+touch a/b/c/0 a/b/c/1 a/b/c/d/e/f/g/0
 
-echo Hit any key to start events...
-read a
+if [ $(id -u) = 0 ]; then
+	# FAN_MARK_FILESYSTEM and open_by_handle_at(2)
+	MODE='--global'
+else
+	# FAN_UNPRIVILEGED recursive watches
+	MODE='--recursive'
+fi
 
+# Sleep 2 seconds while generating events and then process events
+EVENTS="-w"
+inotifywatch $MODE $EVENTS --timeout -2 $WD &
+
+sleep 1
+#SLEEP='sleep 1'
 $SLEEP
-touch a/1 a/2 a/3
-mknod a/0 c 0 0
-chmod +x a/0
+t="Create files and dirs..."
+touch a/0 a/1 a/2 a/3
 mkdir a/dir0 a/dir1 a/dir2
-ls -li a/
 $SLEEP
+t="Rename files and dirs..."
 mv a/0 a/3
 mv a/dir0 a/dir3
 $SLEEP
-rm a/1 a/2 a/3
-rmdir a/dir1 a/dir2 a/dir3
-sleep 1
-touch a/b/c/d/e/f/g/0
-chmod +x a/b/c/d/e/f/g/0
-ls -li a/b/c/d/e/f/g/
+t="Delete files and dirs..."
+rm a/1
+rmdir a/dir1
 $SLEEP
-mv a/b/c/d/e/f/g/0 a/b/c/d/e/f/1
-rm a/b/c/d/e/f/1
+t="Modify files and dirs..."
+chmod +x a/b/c/d
+echo >> a/b/c/0
 $SLEEP
+t="Move files and dirs..."
+mv a/b/c/1 a/b/c/d/e/f/g/1
 mv a/b/c/d/e/f/g a/b/c/d/e/G
-rmdir a/b/c/d/e/G
+$SLEEP
