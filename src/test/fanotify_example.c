@@ -11,6 +11,9 @@
 #include <sys/fanotify.h>
 #include <unistd.h>
 
+static int nrequests;
+static int fail_every = 10;
+
 static void
 handle_events(int fd)
 {
@@ -59,7 +62,7 @@ handle_events(int fd)
 
             if (metadata->fd >= 0) {
 
-                /* Handle open permission event. */
+                /* Handle open/opendir permission event. */
 
                 if (metadata->mask & FAN_OPEN_PERM) {
                     printf("FAN_OPEN_PERM: ");
@@ -69,6 +72,18 @@ handle_events(int fd)
                     response.fd = metadata->fd;
                     response.response = FAN_ALLOW;
                     write(fd, &response, sizeof(response));
+                }
+
+                /* Handle access/readdir permission event. */
+
+                if (metadata->mask & FAN_ACCESS_PERM) {
+                    printf("FAN_ACCESS_PERM: ");
+		    nrequests++;
+                    response.fd = metadata->fd;
+                    response.response = (nrequests % fail_every) ? FAN_ALLOW : FAN_DENY;
+                    write(fd, &response, sizeof(response));
+		    if (response.response == FAN_DENY)
+                        printf("DENIED! ");
                 }
 
                 /* Handle closing of writable file event. */
@@ -112,10 +127,12 @@ main(int argc, char *argv[])
 
     /* Check mount point is supplied. */
 
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s MOUNT\n", argv[0]);
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s MOUNT [fail every]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
+    if (argc > 2)
+        fail_every = atoi(argv[2]);
 
     printf("Press enter key to terminate.\n");
 
@@ -134,7 +151,8 @@ main(int argc, char *argv[])
          file descriptor. */
 
     if (fanotify_mark(fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
-                      FAN_OPEN_PERM | FAN_CLOSE_WRITE, AT_FDCWD,
+                      FAN_OPEN_PERM | FAN_CLOSE_WRITE |
+		      FAN_ACCESS_PERM | FAN_ONDIR, AT_FDCWD,
                       argv[1]) == -1) {
         perror("fanotify_mark");
         exit(EXIT_FAILURE);
