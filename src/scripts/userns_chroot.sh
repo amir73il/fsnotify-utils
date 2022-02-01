@@ -15,7 +15,8 @@ for dir in $dirs; do
 	mount -o bind /$dir $ROOT/$dir
 done
 
-su - $USER -c "unshare --mount --user --fork --map-root-user /usr/sbin/chroot $ROOT sh"
+su - $USER -c "unshare --user --fork --map-root-user sh"
+#su - $USER -c "unshare --mount --user --fork --map-root-user /usr/sbin/chroot $ROOT sh"
 
 for dir in $dirs; do
 	umount $ROOT/$dir

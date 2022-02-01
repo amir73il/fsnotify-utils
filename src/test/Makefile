@@ -1,15 +1,18 @@
-PROGS= fanotify_demo inotify_demo fanotify_bug dnotify
-PROGS+= sbwatch watchdirs mktree rmtree ioloop
+PROGS= fanotify_bug
+TLPI_PROGS= fanotify_demo inotify_demo dnotify
+ITER_PROGS= sbwatch watchdirs mktree rmtree ioloop
 
 TLPI=../lib/error_functions.c
 
-COMMON=iter.c
+ITER=iter.c
 
 CFLAGS= -I../lib -g
 
-all: $(PROGS)
+all: $(PROGS) $(TLPI_PROGS) $(ITER_PROGS)
 
-$(PROGS): $(COMMON)
+$(TLPI_PROGS): $(TPLI)
+
+$(ITER_PROGS): $(ITER)
 
 clean:
 	rm $(PROGS)
