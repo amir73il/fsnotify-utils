@@ -1,4 +1,4 @@
-PROGS= fanotify_bug
+PROGS= fanotify_bug fanotify_example
 TLPI_PROGS= fanotify_demo inotify_demo dnotify
 ITER_PROGS= sbwatch watchdirs mktree rmtree ioloop
 
