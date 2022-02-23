@@ -33,6 +33,7 @@ int node_id_log16;
 int leaf_id_log16;
 int block_id_log16;
 int total_id_log16;
+int file_blocks;
 
 xid_t start_id = 0;
 xid_t end_id = LLONG_MAX;

@@ -1,6 +1,6 @@
-PROGS= fanotify_bug fanotify_example
+PROGS= fanotify_bug fanotify_example sbwatch ioloop
 TLPI_PROGS= fanotify_demo inotify_demo dnotify
-ITER_PROGS= sbwatch watchdirs mktree rmtree ioloop
+ITER_PROGS= watchdirs mktree rmtree
 
 TLPI=../lib/error_functions.c
 
@@ -15,7 +15,7 @@ $(TLPI_PROGS): $(TPLI)
 $(ITER_PROGS): $(ITER)
 
 clean:
-	rm $(PROGS)
+	rm $(PROGS) $(TLPI_PROGS) $(ITER_PROGS)
 
 install:
 	../install.sh $(PROGS)

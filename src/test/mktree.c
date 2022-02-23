@@ -21,7 +21,6 @@
 
 
 static off64_t file_size;
-int file_blocks;
 
 #define KB (1024)
 #define MB (KB * KB)
