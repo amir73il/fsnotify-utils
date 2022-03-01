@@ -14,19 +14,21 @@
 #include <string.h>
 #include <errno.h>
 
+#define MAX_LEN 1024
+
+static char buf[MAX_LEN];
+
 typedef ssize_t (*file_op)(int, void *, size_t);
 
-static ssize_t do_write(int fd, void *buf, size_t count)
+static ssize_t do_write(int fd, void *buf, size_t len)
 {
-	return write(fd, buf, count);
+	return write(fd, buf, len);
 }
 
-static int io_loop(int fd, file_op op, int count)
+static int io_loop(int fd, file_op op, size_t len, int count)
 {
-	char buf[1] = { 0 };
-
 	while (count--) {
-		if (op(fd, buf, 1) < 1 && errno != EINTR)
+		if (op(fd, buf, len) < 1 && errno != EINTR)
 			return -1;
 	}
 
@@ -36,7 +38,7 @@ static int io_loop(int fd, file_op op, int count)
 void main(int argc, char *argv[])
 {
 	const char *progname = basename(argv[0]);
-	int count = 0;
+	int len = 1, count = 0;
 	const char *mode = "read";
 	int flags = O_RDONLY;
 	file_op op = read;
@@ -55,16 +57,21 @@ void main(int argc, char *argv[])
 		op = do_write;
 	}
 
+	if (argc > 4)
+		len = atoi(argv[4]);
+
+	if (len > MAX_LEN)
+		len = MAX_LEN;
+
 	fd = open(argv[1], flags, 0640);
 	if (fd < 0) {
 		perror(argv[1]);
 		exit(1);
 	}
 
+	printf("%s count=%d len=%d op=%s\n", progname, count, len, mode);
 
-	printf("%s count=%d op=%s\n", progname, count, mode);
-
-	if (io_loop(fd, op, count))
+	if (io_loop(fd, op, len, count))
 		perror(mode);
 
 	close(fd);
