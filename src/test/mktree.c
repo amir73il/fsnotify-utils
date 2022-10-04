@@ -35,13 +35,18 @@ struct xattr_t {
 	size_t len;
 };
 
-static struct xattr_t xattrs[] = {
-	{ "system.posix_acl_access" },
+static struct xattr_t all_xattrs[] = {
+	/* Directory-only xattrs: */
 	{ "system.posix_acl_default" },
+	/* Directory/File xattrs: */
+	{ "system.posix_acl_access" },
 	{ "security.NTACL" },
 	{ "user.SAMBA_PAI" },
 	{ NULL, NULL, 0 }
 };
+
+/* Skip directory-only xattrs */
+static struct xattr_t *file_xattrs = all_xattrs + 1;
 
 static struct timespec times[2];
 
@@ -58,7 +63,7 @@ static int read_acls(const char *name)
 		return fd;
 	}
 
-	for (xattr = xattrs; xattr->name; xattr++) {
+	for (xattr = all_xattrs; xattr->name; xattr++) {
 		if (xattr->val) {
 			free(xattr->val);
 			xattr->val = NULL;
@@ -87,7 +92,7 @@ out:
 	return ret;
 }
 
-static int write_xattrs(int fd, xid_t id)
+static int write_xattrs(int fd, xid_t id, struct xattr_t *xattrs)
 {
 	struct xattr_t *xattr;
 	int ret;
@@ -162,7 +167,7 @@ static int create_file(const char *name, xid_t id)
 		ret = 0;
 	}
 	if (ret >= 0)
-		ret = write_xattrs(fd, id);
+		ret = write_xattrs(fd, id, file_xattrs);
 	if (ret >= 0)
 		ret = set_times(fd);
 out:
@@ -184,7 +189,7 @@ static int create_dir(const char *name, xid_t id)
 		return fd;
 	}
 
-	ret = write_xattrs(fd, id);
+	ret = write_xattrs(fd, id, all_xattrs);
 	close(fd);
 	return ret;
 }
