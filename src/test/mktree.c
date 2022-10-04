@@ -83,6 +83,9 @@ static struct xattr_t all_xattrs[] = {
 /* Skip directory-only xattrs */
 static struct xattr_t *file_xattrs = all_xattrs + 1;
 
+static mode_t dir_mode = 0777;
+static mode_t file_mode = 0666;
+
 static struct timespec times[2];
 
 /* Fix DOSATTRIB of dir so they could be applied to files */
@@ -210,7 +213,7 @@ static int create_file(const char *name, xid_t id)
 {
 	int i, ret = 0;
 	int flags = O_CREAT|O_WRONLY|(keep_data ? 0 : O_TRUNC);
-	int fd = open(name, flags, 0644);
+	int fd = open(name, flags, file_mode);
 
 	if (fd < 0) {
 		perror("create file");
@@ -247,7 +250,7 @@ out:
 static int create_dir(const char *name, xid_t id)
 {
 	int fd;
-	int ret = mkdir(name, 0751);
+	int ret = mkdir(name, dir_mode);
 
 	if (ret < 0 && errno != EEXIST)
 		return ret;
@@ -294,8 +297,10 @@ int main(int argc, char *argv[])
 {
 	char *path = argv[1];
 	char *size_unit;
+	struct stat stbuf;
 	int ret;
 
+	umask(0);
 	progname = basename(argv[0]);
 	if (argc < 4)
 		usage();
@@ -349,6 +354,18 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	if (stat(".", &stbuf) < 0) {
+		perror(path);
+		exit(1);
+	}
+
+	/*
+	 * Use root dir permissions with stripped SUID bits for all dir creations
+	 * and with stripped execute bits for all file creations.
+	 */
+	dir_mode = stbuf.st_mode & 0777;
+	file_mode = dir_mode & 0666;
+
 	if (copy_root_acls) {
 		if (read_acls(".") <= 0) {
 			fprintf(stderr, "failed to read ACLs from '%s' - ignoring -A flag.\n", path);
@@ -357,11 +374,6 @@ int main(int argc, char *argv[])
 	}
 
 	if (copy_root_mtime) {
-		struct stat stbuf;
-		if (stat(".", &stbuf) < 0) {
-			fprintf(stderr, "failed to read mtime from '%s' - ignoring -M flag.\n", path);
-			copy_root_mtime = 0;
-		}
 		/* Will set files mtime/atime to root dir mtime */
 		times[0] = times[1] = stbuf.st_mtim;
 	}
