@@ -13,6 +13,8 @@ extern int data_seed;
 extern int keep_data;
 extern int copy_root_acls;
 extern int copy_root_mtime;
+extern int dry_run;
+extern char rel_path[];
 
 void iter_usage();
 int iter_parseopt(int argc, char *argv[]);

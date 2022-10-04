@@ -28,6 +28,7 @@ int data_seed = 0;
 int keep_data = 0;
 int copy_root_acls = 0;
 int copy_root_mtime = 0;
+int dry_run = 0;
 int trace_depth = 0;
 int xid = 0;
 int node_id_log16;
@@ -38,6 +39,9 @@ int file_blocks;
 
 xid_t start_id = 0;
 xid_t end_id = LLONG_MAX;
+
+char rel_path[PATH_MAX];
+static char *base = rel_path;
 
 void iter_usage()
 {
@@ -58,13 +62,14 @@ void iter_usage()
 	fprintf(stderr, "\n");
 	fprintf(stderr, "-A copy ACLs from dirtree root to files and dirs\n");
 	fprintf(stderr, "-M copy mtime from dirtree root to files mtime/atime\n");
+	fprintf(stderr, "-n dry-run\n");
 }
 
 int iter_parseopt(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "AMc:C:w:s:f:d:v:x:X:N:k")) != -1) {
+	while ((c = getopt(argc, argv, "AMc:C:w:s:f:d:v:x:X:N:kn")) != -1) {
 		switch (c) {
 			case 'A':
 				copy_root_acls = 1;
@@ -91,6 +96,9 @@ int iter_parseopt(int argc, char *argv[])
 				break;
 			case 'k':
 				keep_data = 1;
+				break;
+			case 'n':
+				dry_run = 1;
 				break;
 			case 'f':
 				file_prefix = optarg;
@@ -199,27 +207,32 @@ static void trace_print(char *name, int depth, int ret)
 static int trace_begin(char *name, int depth, xid_t id)
 {
 	int tabs = tree_depth - abs(depth);
-	int ret = 0;
+	int len, ret = 0;
+
+	len = sprintf(base, "%s/", name);
+	base += len;
 
 	if (tabs >= trace_depth)
-		return 0;
+		return len;
 
 	/* Skip only trace leaf id's */
 	if (skip_id(depth, id))
 		ret = 1;
 
 	trace_print(name, depth, ret);
-	return ret;
+	return ret ? -len : len;
 }
 
-static void trace_end(char *name, int depth, int ret)
+static void trace_end(char *name, int depth, int ret, int len)
 {
+	base -= len;
+	base[0] = 0;
 	if (ret < 0) trace_print(name, depth, ret);
 }
 
 int iter_dirs(iter_op op, int depth, xid_t parent)
 {
-	int ret = 0;
+	int len, ret = 0;
 	int fd = open(".", O_PATH);
 	int i, count = tree_width;
 	char name[NAME_MAX+1];
@@ -248,10 +261,11 @@ int iter_dirs(iter_op op, int depth, xid_t parent)
 			goto out;
 		}
 
-		ret = trace_begin(name, depth, id);
-		if (!ret)
+		ret = 0;
+		len = trace_begin(name, depth, id);
+		if (len > 0)
 			ret = iter_dirs(op, next_depth, id << (next_id_log16*4));
-		trace_end(name, depth, ret);
+		trace_end(name, depth, ret, abs(len));
 		if (ret < 0)
 			goto out;
 
@@ -307,5 +321,6 @@ int iter_tree(iter_op op, int depth)
 		}
 	}
 
+	printf("-----------------\n");
 	return iter_dirs(op, depth, root);
 }

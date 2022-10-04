@@ -199,6 +199,12 @@ static int do_create(const char *name, int depth, xid_t id)
 	return depth ? create_dir(name, id) : create_file(name, id);
 }
 
+static int do_print(const char *name, int depth, xid_t id)
+{
+	printf("%s%s%s\n", rel_path, name, depth ? "/" : "");
+	return 0;
+}
+
 static const char *progname;
 
 void usage()
@@ -221,11 +227,6 @@ int main(int argc, char *argv[])
 		usage();
 
 	tree_depth = atoi(argv[2]);
-
-	if (chdir(path)) {
-		perror(path);
-		exit(1);
-	}
 
 	file_size = strtol(argv[3], &size_unit, 10);
 	file_blocks = file_size ? 1 : 0;
@@ -269,6 +270,11 @@ int main(int argc, char *argv[])
 			block_size = (block_size >> 2) << 2;
 	}
 
+	if (chdir(path) && !dry_run) {
+		perror(path);
+		exit(1);
+	}
+
 	if (copy_root_acls) {
 		if (read_acls(".") <= 0) {
 			fprintf(stderr, "failed to read ACLs from '%s' - ignoring -A flag.\n", path);
@@ -291,7 +297,7 @@ int main(int argc, char *argv[])
 	printf("tree_depth=%d\nfile_size=%ld%s\n"
 		"tree_id=%x\ntree_width=%d\nleaf_start=%d\nleaf_count=%d\nnode_count=%d\n"
 		"file_prefix='%s'\ndir_prefix='%s'\ndata_seed=%d\n",
-		tree_depth, *size_unit ? file_size : block_size, size_unit,
+		tree_depth, *size_unit ? file_size : file_size*block_size, size_unit,
 		tree_id, tree_width, leaf_start, leaf_count, node_count,
 		file_prefix, dir_prefix, data_seed);
 
@@ -320,7 +326,9 @@ int main(int argc, char *argv[])
 	printf("keep_data=%d\ncopy_root_acls=%d\ncopy_root_mtime=%d\n",
 		keep_data, copy_root_acls, copy_root_mtime);
 
-	if (strcmp(progname, "rmtree") == 0)
+	if (dry_run)
+		ret = iter_tree(do_print, tree_depth);
+	else if (strcmp(progname, "rmtree") == 0)
 		ret = iter_tree(do_rm, -tree_depth);
 	else
 		ret = iter_tree(do_create, tree_depth);
