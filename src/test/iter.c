@@ -278,10 +278,11 @@ int iter_tree(iter_op op, int depth)
 	// Calc number of hexa digits per tree level
 	if (xid) {
 		// reserve space for block offset and separator char
-		if (file_blocks)
+		if (file_blocks > 1)
 			block_id_log16 = log16(file_blocks - 1) + 2;
 		node_id_log16 = log16(tree_width + node_count - 1) + 1;
-		leaf_id_log16 = log16(leaf_count - 1) + 1;
+		if (leaf_count)
+			leaf_id_log16 = log16(leaf_count - 1) + 1;
 		total_id_log16 = node_id_log16 * tree_depth + leaf_id_log16 + block_id_log16;
 		printf("node_id_digits=%d*%d,leaf_id_digits=%d,block_id_digits=%d\ntotal_id_digits=%d\n",
 			node_id_log16, tree_depth, leaf_id_log16, block_id_log16, total_id_log16);

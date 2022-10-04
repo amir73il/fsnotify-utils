@@ -21,11 +21,12 @@ typedef long long int xid_t;
 #define XATTR_XID "user.iter.xid"
 
 /*
- * hex xid needs to fit into a fixed size string including the
- * block offset, sperator char and terminating null, e.g.: "1000/3"
+ * hex xid needs to fit into first half of block id including the
+ * block offset and sperator char, e.g.: "1000/3"
  */
-#define XID_MAX_HEX_LEN 10
-#define BLOCKS_PER_MB 1
+#define BLOCK_ID_LEN 20
+#define XID_MAX_HEX_LEN (BLOCK_ID_LEN/2)
+#define BLOCKS_PER_MB 2
 
 extern int file_blocks;
 
