@@ -289,10 +289,10 @@ int main(int argc, char *argv[])
 	printf("%s %s\n", progname, path);
 	// Print parameters that are mixed into random seed
 	printf("tree_depth=%d\nfile_size=%ld%s\n"
-		"tree_width=%d\nleaf_start=%d\nleaf_count=%d\nnode_count=%d\n"
+		"tree_id=%x\ntree_width=%d\nleaf_start=%d\nleaf_count=%d\nnode_count=%d\n"
 		"file_prefix='%s'\ndir_prefix='%s'\ndata_seed=%d\n",
 		tree_depth, *size_unit ? file_size : block_size, size_unit,
-		tree_width, leaf_start, leaf_count, node_count,
+		tree_id, tree_width, leaf_start, leaf_count, node_count,
 		file_prefix, dir_prefix, data_seed);
 
 	if (data_seed > 0) {
@@ -311,6 +311,8 @@ int main(int argc, char *argv[])
 		// value into the random seed
 		if (leaf_start)
 			mixseed(state, leaf_start);
+		if (tree_id)
+			mixseed(state, tree_id);
 		printf("mixed_seed=%u\n", state[0]);
 	}
 

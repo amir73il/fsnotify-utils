@@ -1,6 +1,7 @@
 #ifndef _ITER_H
 #define _ITER_H
 
+extern int tree_id;
 extern int tree_depth;
 extern int tree_width;
 extern int leaf_start;

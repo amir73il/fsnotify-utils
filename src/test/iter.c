@@ -16,6 +16,7 @@
 #include <limits.h>
 #include "iter.h"
 
+int tree_id = 0;
 int tree_depth;
 int tree_width = 32;
 int leaf_start = 0;
@@ -48,6 +49,7 @@ void iter_usage()
 	fprintf(stderr, "-v <trace depth>      (default = 0, implies -x)\n");
 	fprintf(stderr, "-x <start global id>  (default = 0, id in hexa as printed by -v deepest trace prints)\n");
 	fprintf(stderr, "-X <end global id>  (default = MAX, id in hexa as printed by -v deepest trace prints)\n");
+	fprintf(stderr, "-N <tree prefix id>   (prefix id in hexa for all global ids, implies -x)\n");
 	fprintf(stderr, "-s <data type/seed> [-k] (default = 0)\n");
 	fprintf(stderr, "data type/seed may be 0 (default) for fallocate, < 0 for sparse file and > 0 for seed of random data\n");
 	fprintf(stderr, "By default, existing file is truncated to zero before its data is allocated and initialized.\n");
@@ -62,7 +64,7 @@ int iter_parseopt(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "AMc:C:w:s:f:d:v:x:X:k")) != -1) {
+	while ((c = getopt(argc, argv, "AMc:C:w:s:f:d:v:x:X:N:k")) != -1) {
 		switch (c) {
 			case 'A':
 				copy_root_acls = 1;
@@ -107,6 +109,10 @@ int iter_parseopt(int argc, char *argv[])
 				break;
 			case 'X':
 				end_id = strtoll(optarg, NULL, 16);
+				xid = 1;
+				break;
+			case 'N':
+				tree_id = strtoll(optarg, NULL, 16);
 				xid = 1;
 				break;
 			default:
@@ -275,6 +281,9 @@ static unsigned int log16(unsigned int x)
 
 int iter_tree(iter_op op, int depth)
 {
+	int tree_id_log16 = 0;
+	xid_t root = 1;
+
 	// Calc number of hexa digits per tree level
 	if (xid) {
 		// reserve space for block offset and separator char
@@ -283,9 +292,13 @@ int iter_tree(iter_op op, int depth)
 		node_id_log16 = log16(tree_width + node_count - 1) + 1;
 		if (leaf_count)
 			leaf_id_log16 = log16(leaf_count - 1) + 1;
-		total_id_log16 = node_id_log16 * tree_depth + leaf_id_log16 + block_id_log16;
-		printf("node_id_digits=%d*%d,leaf_id_digits=%d,block_id_digits=%d\ntotal_id_digits=%d\n",
-			node_id_log16, tree_depth, leaf_id_log16, block_id_log16, total_id_log16);
+		if (tree_id) {
+			tree_id_log16 = log16(tree_id - 1) + 1;
+			root = tree_id << (node_id_log16*4);
+		}
+		total_id_log16 = tree_id_log16 + node_id_log16 * tree_depth + leaf_id_log16 + block_id_log16;
+		printf("tree_id_digits=%d,node_id_digits=%d*%d,leaf_id_digits=%d,block_id_digits=%d\ntotal_id_digits=%d\n",
+			tree_id_log16, node_id_log16, tree_depth, leaf_id_log16, block_id_log16, total_id_log16);
 		if (total_id_log16 > XID_MAX_HEX_LEN) {
 			fprintf(stderr, "Maximum global id has %d digit (limit is %d digit)\n"
 					"Hint: remove -x/-v or reduce tree depth, width, or file size.\n",
@@ -294,5 +307,5 @@ int iter_tree(iter_op op, int depth)
 		}
 	}
 
-	return iter_dirs(op, depth, 1);
+	return iter_dirs(op, depth, root);
 }
