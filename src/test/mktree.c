@@ -35,13 +35,48 @@ struct xattr_t {
 	size_t len;
 };
 
+// From: source3/include/smb.h:
+/* EA names used internally in Samba. KEEP UP TO DATE with prohibited_ea_names in trans2.c !. */
+#define SAMBA_POSIX_INHERITANCE_EA_NAME "user.SAMBA_PAI"
+/* EA to use for DOS attributes */
+#define SAMBA_XATTR_DOS_ATTRIB "user.DOSATTRIB"
+
+// From: libcli/smb/smb_constants.h
+/* FileAttributes (search attributes) field */
+#define FILE_ATTRIBUTE_READONLY         0x0001L
+#define FILE_ATTRIBUTE_HIDDEN           0x0002L
+#define FILE_ATTRIBUTE_SYSTEM           0x0004L
+#define FILE_ATTRIBUTE_VOLUME           0x0008L
+#define FILE_ATTRIBUTE_DIRECTORY        0x0010L
+#define FILE_ATTRIBUTE_ARCHIVE          0x0020L
+#define FILE_ATTRIBUTE_DEVICE           0x0040L
+#define FILE_ATTRIBUTE_NORMAL           0x0080L
+
+/*
+ * Dos attribute structure which is binary compatible with samba's DosInfo4.
+ * Storing it into the xattr named "DOSATTRIB" separately from inode
+ * allows ksmbd to faithfully reproduce windows filesystem semantics
+ * on top of a POSIX filesystem.
+ */
+struct xattr_dos_attrib {
+	uint16_t   pad;            /* zeroed */
+	uint16_t   version;        /* version 4 */
+	uint32_t   version2;       /* version 4 */
+	uint32_t   flags;          /* valid flags */
+	uint32_t   attr;           /* Dos attribute */
+	uint64_t   itime;          /* Invented/Initial time */
+	uint64_t   create_time;    /* File creation time */
+};
+
 static struct xattr_t all_xattrs[] = {
 	/* Directory-only xattrs: */
 	{ "system.posix_acl_default" },
 	/* Directory/File xattrs: */
 	{ "system.posix_acl_access" },
 	{ "security.NTACL" },
-	{ "user.SAMBA_PAI" },
+	{ SAMBA_POSIX_INHERITANCE_EA_NAME },
+	/* Keep this last - it may be removed from array */
+	{ SAMBA_XATTR_DOS_ATTRIB },
 	{ NULL, NULL, 0 }
 };
 
@@ -49,6 +84,26 @@ static struct xattr_t all_xattrs[] = {
 static struct xattr_t *file_xattrs = all_xattrs + 1;
 
 static struct timespec times[2];
+
+/* Fix DOSATTRIB of dir so they could be applied to files */
+static int fix_dos_attrib(char *buf, size_t len)
+{
+	struct xattr_dos_attrib *dos = (struct xattr_dos_attrib *)buf;
+
+	if (len != sizeof(struct xattr_dos_attrib) || dos->version != 4)
+		return -1;
+
+	if (!(dos->attr & FILE_ATTRIBUTE_DIRECTORY))
+		return 0;
+
+	/*
+	 * Samba stores this flag for some reason and displays it also for
+	 * non-dirs if the flag is stored, but we can safely remove the flag
+	 * because Samba will automatically sets it for dirs if it is missing.
+	 */
+	dos->attr &= ~FILE_ATTRIBUTE_DIRECTORY;
+	return 1;
+}
 
 static int read_acls(const char *name)
 {
@@ -85,6 +140,20 @@ static int read_acls(const char *name)
 			goto out;
 		}
 		xattr->len = res;
+
+		if (strcmp(xattr->name, SAMBA_XATTR_DOS_ATTRIB) == 0) {
+			res = fix_dos_attrib(xattr->val, xattr->len);
+			if (res < 0) {
+				/* Do not set DOSATTRIB on files unless we managed to fix it */
+				fprintf(stderr, "failed to read valid DOSATTRIB from '%s' - ignoring it.\n", name);
+				xattr->name = NULL;
+			} else if (res > 0) {
+				/* Try to set the fixed DOSATTRIB on rootdir as well */
+				fprintf(stderr, "removed directory attribute from '%s'.\n", name);
+				(void)fsetxattr(fd, xattr->name, xattr->val, xattr->len, 0);
+			}
+		}
+
 		ret++;
 	}
 out:
