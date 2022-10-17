@@ -2,7 +2,7 @@ progname=`basename $0`
 
 usage() {
 	echo "usgae: $progname <branches file>"
-	echo "   or: BRANCHES=<branches> rebase"
+	echo "   or: BRANCHES=<branches> $progname"
 	exit 1
 }
 
@@ -13,8 +13,10 @@ remote=${2-github}
 
 for b in ${BRANCHES[*]};
 do
-	echo git push $b...
-	[ "`git rev-parse $b`" = "`git rev-parse $remote/$b`" ] || \
-		git pf $remote $b
+	echo git fetch $b...
+	git fetch --force $remote $b:$b
+	git checkout $b
+	[ -z "$base" ] ||  git branch -u $base $b
+	base=$b
 done
 git lg ${BRANCHES[0]}..
