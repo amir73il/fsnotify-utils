@@ -8,11 +8,16 @@
 #include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/fanotify.h>
 #include <unistd.h>
 
 static int nrequests;
-static int fail_every = 10;
+static int fail_every;
+
+#ifndef FAN_REPORT_FD_ERROR
+#define FAN_REPORT_FD_ERROR    0x00002000      /* event->fd can report error */
+#endif
 
 static void
 handle_events(int fd)
@@ -60,37 +65,43 @@ handle_events(int fd)
                queue overflow, or a file descriptor (a nonnegative
                integer). Here, we simply ignore queue overflow. */
 
-            if (metadata->fd >= 0) {
 
                 /* Handle open/opendir permission event. */
 
-                if (metadata->mask & FAN_OPEN_PERM) {
-                    printf("FAN_OPEN_PERM: ");
+	    if (metadata->mask & FAN_OPEN_PERM) {
+		printf("FAN_OPEN_PERM: ");
 
                     /* Allow file to be opened. */
 
+		if (metadata->fd >= 0) {
                     response.fd = metadata->fd;
                     response.response = FAN_ALLOW;
                     write(fd, &response, sizeof(response));
                 }
+	    }
 
                 /* Handle access/readdir permission event. */
 
-                if (metadata->mask & FAN_ACCESS_PERM) {
-                    printf("FAN_ACCESS_PERM: ");
+	    if (metadata->mask & FAN_ACCESS_PERM) {
+                printf("FAN_ACCESS_PERM: ");
+		if (metadata->fd >= 0) {
 		    nrequests++;
                     response.fd = metadata->fd;
-                    response.response = (nrequests % fail_every) ? FAN_ALLOW : FAN_DENY;
+                    response.response = !fail_every || (nrequests % fail_every) ? FAN_ALLOW : FAN_DENY;
                     write(fd, &response, sizeof(response));
 		    if (response.response == FAN_DENY)
                         printf("DENIED! ");
                 }
+	    }
 
                 /* Handle closing of writable file event. */
 
-                if (metadata->mask & FAN_CLOSE_WRITE)
-                    printf("FAN_CLOSE_WRITE: ");
+	    if (metadata->mask & FAN_CLOSE_WRITE)
+                printf("FAN_CLOSE_WRITE: ");
 
+	    if (metadata->fd < 0) {
+		printf("fd open failed: %s\n", strerror(-metadata->fd));
+	    } else {
                 /* Retrieve and print pathname of the accessed file. */
 
                 snprintf(procfd_path, sizeof(procfd_path),
@@ -138,8 +149,8 @@ main(int argc, char *argv[])
 
     /* Create the file descriptor for accessing the fanotify API. */
 
-    fd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_CONTENT | FAN_NONBLOCK,
-                       O_RDONLY | O_LARGEFILE);
+    fd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_CONTENT | FAN_NONBLOCK |
+		       FAN_REPORT_FD_ERROR, O_RDONLY | O_LARGEFILE);
     if (fd == -1) {
         perror("fanotify_init");
         exit(EXIT_FAILURE);
@@ -151,8 +162,8 @@ main(int argc, char *argv[])
          file descriptor. */
 
     if (fanotify_mark(fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
-                      FAN_OPEN_PERM | FAN_CLOSE_WRITE |
-		      FAN_ACCESS_PERM | FAN_ONDIR, AT_FDCWD,
+                      FAN_OPEN_PERM | FAN_ACCESS_PERM |
+                      FAN_CLOSE_WRITE | FAN_ONDIR, AT_FDCWD,
                       argv[1]) == -1) {
         perror("fanotify_mark");
         exit(EXIT_FAILURE);
