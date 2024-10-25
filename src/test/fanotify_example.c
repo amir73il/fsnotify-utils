@@ -19,6 +19,21 @@ static int fail_every;
 #define FAN_REPORT_FD_ERROR    0x00002000      /* event->fd can report error */
 #endif
 
+#ifndef FAN_PRE_ACCESS
+#define FAN_PRE_ACCESS		0x00100000	/* Pre-content access hook */
+#endif
+
+#ifndef FAN_EVENT_INFO_TYPE_RANGE
+#define FAN_EVENT_INFO_TYPE_RANGE       6
+
+struct fanotify_event_info_range {
+	struct fanotify_event_info_header hdr;
+	uint32_t pad;
+	uint64_t offset;
+	uint64_t count;
+};
+#endif
+
 static void
 handle_events(int fd)
 {
@@ -82,8 +97,16 @@ handle_events(int fd)
 
                 /* Handle access/readdir permission event. */
 
-	    if (metadata->mask & FAN_ACCESS_PERM) {
-                printf("FAN_ACCESS_PERM: ");
+	    if (metadata->mask & (FAN_ACCESS_PERM | FAN_PRE_ACCESS)) {
+		if (metadata->mask & FAN_ACCESS_PERM)
+		    printf("FAN_ACCESS_PERM: ");
+		if (metadata->mask & FAN_PRE_ACCESS) {
+		    struct fanotify_event_info_range *range = (void *)(metadata + 1);
+		    printf("FAN_PRE_ACCESS: ");
+		    if (metadata->event_len - metadata->metadata_len >= sizeof(*range) &&
+				    range->hdr.info_type == FAN_EVENT_INFO_TYPE_RANGE)
+		        printf("[%d..%d] ", range->offset, range->offset + range->count);
+		}
 		if (metadata->fd >= 0) {
 		    nrequests++;
                     response.fd = metadata->fd;
@@ -149,7 +172,7 @@ main(int argc, char *argv[])
 
     /* Create the file descriptor for accessing the fanotify API. */
 
-    fd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_CONTENT | FAN_NONBLOCK |
+    fd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_PRE_CONTENT | FAN_NONBLOCK |
 		       FAN_REPORT_FD_ERROR, O_RDONLY | O_LARGEFILE);
     if (fd == -1) {
         perror("fanotify_init");
@@ -162,7 +185,7 @@ main(int argc, char *argv[])
          file descriptor. */
 
     if (fanotify_mark(fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
-                      FAN_OPEN_PERM | FAN_ACCESS_PERM |
+                      FAN_OPEN_PERM | FAN_ACCESS_PERM | FAN_PRE_ACCESS |
                       FAN_CLOSE_WRITE | FAN_ONDIR, AT_FDCWD,
                       argv[1]) == -1) {
         perror("fanotify_mark");
