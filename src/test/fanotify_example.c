@@ -19,6 +19,21 @@ static int fail_every;
 #define FAN_REPORT_FD_ERROR    0x00002000      /* event->fd can report error */
 #endif
 
+#ifndef FAN_PRE_ACCESS
+#define FAN_PRE_ACCESS		0x00100000	/* Pre-content access hook */
+#endif
+
+#ifndef FAN_EVENT_INFO_TYPE_RANGE
+#define FAN_EVENT_INFO_TYPE_RANGE       6
+
+struct fanotify_event_info_range {
+	struct fanotify_event_info_header hdr;
+	uint32_t pad;
+	uint64_t offset;
+	uint64_t count;
+};
+#endif
+
 static void
 handle_events(int fd)
 {
@@ -82,8 +97,17 @@ handle_events(int fd)
 
                 /* Handle access/readdir permission event. */
 
-	    if (metadata->mask & FAN_ACCESS_PERM) {
-                printf("FAN_ACCESS_PERM: ");
+	    if (metadata->mask & (FAN_ACCESS_PERM | FAN_PRE_ACCESS)) {
+		if (metadata->mask & FAN_ACCESS_PERM)
+		    printf("FAN_ACCESS_PERM: ");
+		if (metadata->mask & FAN_PRE_ACCESS) {
+		    struct fanotify_event_info_range *range = (void *)(metadata + 1);
+		    printf("FAN_PRE_ACCESS: ");
+		    if (metadata->event_len - metadata->metadata_len >= sizeof(*range) &&
+				    range->hdr.info_type == FAN_EVENT_INFO_TYPE_RANGE)
+		        printf("[%llu..%llu] ", (unsigned long long)range->offset,
+			       (unsigned long long)(range->offset + range->count));
+		}
 		if (metadata->fd >= 0) {
 		    nrequests++;
                     response.fd = metadata->fd;
@@ -132,9 +156,9 @@ int
 main(int argc, char *argv[])
 {
     char buf;
-    int fd, poll_num;
+    int fd, pre_fd, poll_num;
     nfds_t nfds;
-    struct pollfd fds[2];
+    struct pollfd fds[3];
 
     /* Check mount point is supplied. */
 
@@ -157,7 +181,8 @@ main(int argc, char *argv[])
     }
 
     /* Mark the mount for:
-       - permission events before opening files
+       - permission events before opening files and directories
+       - permission events before reading files and directories
        - notification events after closing a write-enabled
          file descriptor. */
 
@@ -169,15 +194,33 @@ main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    /* Create a second group for pre-content events before accessing file
+       content.  Pre-content events do not support event flags, not even
+       in the combined mask of a mark, so they cannot be watched together
+       with the FAN_ONDIR events above. */
+
+    pre_fd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_PRE_CONTENT | FAN_NONBLOCK |
+		           FAN_REPORT_FD_ERROR, O_RDONLY | O_LARGEFILE);
+    if (pre_fd == -1) {
+        perror("fanotify_init FAN_CLASS_PRE_CONTENT (not supported?)");
+    } else if (fanotify_mark(pre_fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
+                             FAN_PRE_ACCESS, AT_FDCWD, argv[1]) == -1) {
+        perror("fanotify_mark FAN_PRE_ACCESS");
+        exit(EXIT_FAILURE);
+    }
+
     /* Prepare for polling. */
 
-    nfds = 2;
+    nfds = pre_fd == -1 ? 2 : 3;
 
     fds[0].fd = STDIN_FILENO;       /* Console input */
     fds[0].events = POLLIN;
 
     fds[1].fd = fd;                 /* Fanotify input */
     fds[1].events = POLLIN;
+
+    fds[2].fd = pre_fd;             /* Fanotify pre-content events input */
+    fds[2].events = POLLIN;
 
     /* This is the loop to wait for incoming events. */
 
@@ -209,10 +252,17 @@ main(int argc, char *argv[])
 
                 handle_events(fd);
             }
+
+            if (nfds > 2 && fds[2].revents & POLLIN) {
+
+                /* Fanotify pre-content events are available. */
+
+                handle_events(pre_fd);
+            }
         }
     }
 
-    printf("Listening for events stopped.\en");
+    printf("Listening for events stopped.\n");
     exit(EXIT_SUCCESS);
 }
 
