@@ -23,6 +23,20 @@ static int fail_every;
 #define FAN_PRE_ACCESS		0x00100000	/* Pre-content access hook */
 #endif
 
+#ifndef FAN_PRE_DIR_ACCESS
+#define FAN_PRE_DIR_ACCESS	0x00200000	/* Pre-content dir access hook */
+#endif
+
+#ifndef FAN_REPORT_DFID_NAME_TARGET
+#define FAN_REPORT_DFID_NAME_TARGET	(FAN_REPORT_DFID_NAME | FAN_REPORT_FID | \
+					 0x00001000 /* FAN_REPORT_TARGET_FID */)
+#endif
+
+#ifndef FAN_CLASS_PRE_CONTENT_FID
+#define FAN_CLASS_PRE_CONTENT_FID	(FAN_CLASS_PRE_CONTENT | \
+					 FAN_REPORT_DFID_NAME_TARGET)
+#endif
+
 #ifndef FAN_EVENT_INFO_TYPE_RANGE
 #define FAN_EVENT_INFO_TYPE_RANGE       6
 
@@ -33,6 +47,47 @@ struct fanotify_event_info_range {
 	uint64_t count;
 };
 #endif
+
+/*
+ * Return the info record of type info_type, or NULL if the event has no such
+ * info record.
+ */
+static const struct fanotify_event_info_header *
+event_info(const struct fanotify_event_metadata *metadata, int info_type)
+{
+    const char *rec = (const char *)metadata + metadata->metadata_len;
+    const char *end = (const char *)metadata + metadata->event_len;
+
+    while (rec + sizeof(struct fanotify_event_info_header) <= end) {
+        const struct fanotify_event_info_header *hdr = (const void *)rec;
+
+        if (!hdr->len || rec + hdr->len > end)
+            break;
+        if (hdr->info_type == info_type)
+            return hdr;
+        rec += hdr->len;
+    }
+    return NULL;
+}
+
+/*
+ * Return the name from the dir fid info record of a FAN_PRE_DIR_ACCESS event,
+ * which is empty for readdir and the looked up name for lookup.
+ */
+static const char *
+event_name(const struct fanotify_event_metadata *metadata)
+{
+    const struct fanotify_event_info_fid *fid = (const void *)
+        event_info(metadata, FAN_EVENT_INFO_TYPE_DFID_NAME);
+    const struct file_handle *fh;
+    const char *name;
+
+    if (!fid)
+        return "";
+    fh = (const void *)fid->handle;
+    name = (const char *)fh->f_handle + fh->handle_bytes;
+    return name < (const char *)fid + fid->hdr.len ? name : "";
+}
 
 static void
 handle_events(int fd)
@@ -101,13 +156,33 @@ handle_events(int fd)
 		if (metadata->mask & FAN_ACCESS_PERM)
 		    printf("FAN_ACCESS_PERM: ");
 		if (metadata->mask & FAN_PRE_ACCESS) {
-		    struct fanotify_event_info_range *range = (void *)(metadata + 1);
+		    const struct fanotify_event_info_range *range = (const void *)
+		        event_info(metadata, FAN_EVENT_INFO_TYPE_RANGE);
+
 		    printf("FAN_PRE_ACCESS: ");
-		    if (metadata->event_len - metadata->metadata_len >= sizeof(*range) &&
-				    range->hdr.info_type == FAN_EVENT_INFO_TYPE_RANGE)
+		    if (range)
 		        printf("[%llu..%llu] ", (unsigned long long)range->offset,
 			       (unsigned long long)(range->offset + range->count));
 		}
+		if (metadata->fd >= 0) {
+		    nrequests++;
+                    response.fd = metadata->fd;
+                    response.response = !fail_every || (nrequests % fail_every) ? FAN_ALLOW : FAN_DENY;
+                    write(fd, &response, sizeof(response));
+		    if (response.response == FAN_DENY)
+                        printf("DENIED! ");
+                }
+	    }
+
+                /* Handle directory pre-content (readdir/lookup) event. */
+
+	    if (metadata->mask & FAN_PRE_DIR_ACCESS) {
+		const char *name = event_name(metadata);
+
+		if (*name)
+		    printf("FAN_PRE_DIR_ACCESS: lookup '%s' in ", name);
+		else
+		    printf("FAN_PRE_DIR_ACCESS: readdir ");
 		if (metadata->fd >= 0) {
 		    nrequests++;
                     response.fd = metadata->fd;
@@ -197,15 +272,27 @@ main(int argc, char *argv[])
     /* Create a second group for pre-content events before accessing file
        content.  Pre-content events do not support event flags, not even
        in the combined mask of a mark, so they cannot be watched together
-       with the FAN_ONDIR events above. */
+       with the FAN_ONDIR events above.
+       With a group of class FAN_CLASS_PRE_CONTENT_FID, which reports fid
+       info and only allows pre-content events, also watch directory
+       pre-content events (readdir/lookup), which need no FAN_ONDIR flag.
+       Fall back to FAN_CLASS_PRE_CONTENT for file pre-content events. */
 
-    pre_fd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_PRE_CONTENT | FAN_NONBLOCK |
+    uint64_t pre_mask = FAN_PRE_ACCESS | FAN_PRE_DIR_ACCESS;
+
+    pre_fd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_PRE_CONTENT_FID | FAN_NONBLOCK |
 		           FAN_REPORT_FD_ERROR, O_RDONLY | O_LARGEFILE);
+    if (pre_fd == -1) {
+        perror("fanotify_init FAN_CLASS_PRE_CONTENT_FID (not supported?)");
+        pre_mask = FAN_PRE_ACCESS;
+        pre_fd = fanotify_init(FAN_CLOEXEC | FAN_CLASS_PRE_CONTENT | FAN_NONBLOCK |
+		               FAN_REPORT_FD_ERROR, O_RDONLY | O_LARGEFILE);
+    }
     if (pre_fd == -1) {
         perror("fanotify_init FAN_CLASS_PRE_CONTENT (not supported?)");
     } else if (fanotify_mark(pre_fd, FAN_MARK_ADD | FAN_MARK_MOUNT,
-                             FAN_PRE_ACCESS, AT_FDCWD, argv[1]) == -1) {
-        perror("fanotify_mark FAN_PRE_ACCESS");
+                             pre_mask, AT_FDCWD, argv[1]) == -1) {
+        perror("fanotify_mark pre-content events");
         exit(EXIT_FAILURE);
     }
 
